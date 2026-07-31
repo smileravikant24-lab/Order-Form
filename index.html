@@ -8,7 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
-:root{--c-primary:#1a5c2a;--c-primary-dark:#0e3a18;--c-primary-light:#2d8a42;--c-accent:#d4a017;--c-accent-light:#f5d76e;--c-surface:#fafdf7;--c-surface-alt:#f0f5ec;--c-border:#d4ddd0;--c-text:#1a2e1a;--c-muted:#5a6b5a;--c-white:#fff;--c-danger:#c0392b;--c-danger-light:#fdf0ef;--r:10px}
+:root{color-scheme:light;--c-primary:#1a5c2a;--c-primary-dark:#0e3a18;--c-primary-light:#2d8a42;--c-accent:#d4a017;--c-accent-light:#f5d76e;--c-surface:#fafdf7;--c-surface-alt:#f0f5ec;--c-border:#d4ddd0;--c-text:#1a2e1a;--c-muted:#5a6b5a;--c-white:#fff;--c-danger:#c0392b;--c-danger-light:#fdf0ef;--r:10px}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170deg,var(--c-surface-alt),#e8efe4 40%,var(--c-surface));color:var(--c-text);min-height:100vh;padding:20px 16px;-webkit-font-smoothing:antialiased}
 .container{max-width:1100px;margin:0 auto}
@@ -37,7 +37,7 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
 .lbl .r{color:var(--c-danger);margin-left:2px}
 .inp,.sel,.txa{padding:10px 14px;border-radius:8px;border:1.5px solid var(--c-border);font-size:14px;font-weight:500;color:var(--c-text);background:var(--c-white);outline:none;transition:border-color .2s,box-shadow .2s;font-family:'DM Sans',sans-serif;width:100%}
 .inp:focus,.sel:focus,.txa:focus{border-color:var(--c-primary);box-shadow:0 0 0 3px rgba(26,92,42,.1)}
-.sel{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a6b5a' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.sel{cursor:pointer;-webkit-appearance:none;-moz-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a6b5a' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
 .txa{resize:vertical;min-height:80px}
 .inp-mono{font-family:'JetBrains Mono',monospace;font-weight:700;text-align:right;background:var(--c-surface-alt)}
 .inp-readonly{background:var(--c-surface-alt)!important;color:var(--c-muted)!important;cursor:default}
