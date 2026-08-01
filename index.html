@@ -39,6 +39,12 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
 .inp:focus,.sel:focus,.txa:focus{border-color:var(--c-primary);box-shadow:0 0 0 3px rgba(26,92,42,.1)}
 .sel{cursor:pointer;-webkit-appearance:none;-moz-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a6b5a' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
 .txa{resize:vertical;min-height:80px}
+.firm-dd{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;max-height:220px;overflow-y:auto;background:var(--c-white);border:1.5px solid var(--c-border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:50}
+.firm-dd.show{display:block}
+.firm-dd .fdi{padding:10px 14px;font-size:13.5px;font-weight:500;color:var(--c-text);cursor:pointer;border-bottom:1px solid var(--c-surface-alt)}
+.firm-dd .fdi:last-child{border-bottom:none}
+.firm-dd .fdi:hover,.firm-dd .fdi.active{background:var(--c-surface-alt)}
+.firm-dd .fdi-empty{padding:10px 14px;font-size:13px;color:var(--c-muted);cursor:default}
 .inp-mono{font-family:'JetBrains Mono',monospace;font-weight:700;text-align:right;background:var(--c-surface-alt)}
 .inp-readonly{background:var(--c-surface-alt)!important;color:var(--c-muted)!important;cursor:default}
 .ph,.pr{display:grid;gap:10px;align-items:end}
@@ -208,13 +214,13 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
   <div class="card-h"><span class="ico">&#128100;</span><span class="ttl">Customer Information</span></div>
   <div class="card-b">
     <div class="g2">
-      <div class="fld">
+      <div class="fld" style="position:relative">
         <label class="lbl">Name of Firm <span class="r">*</span></label>
-        <input class="inp" id="firmName" list="fld" placeholder="Search or type firm name..." required
-        oninput="autoFillGST(this.value)"
-        onchange="autoFillGST(this.value)"
-        onblur="autoFillGST(this.value)">
-        <datalist id="fld"></datalist>
+        <input class="inp" id="firmName" placeholder="Search or type firm name..." required autocomplete="off"
+        oninput="onFirmInput(this.value)"
+        onfocus="onFirmInput(this.value)"
+        onblur="autoFillGST(this.value);hideFirmDD()">
+        <div class="firm-dd" id="firmDD"></div>
         <div id="gstBadgeWrap" style="display:none"><span class="gst-badge">&#128196; GST: <span id="gstBadgeVal"></span></span></div>
       </div>
       <div class="fld"><label class="lbl">GST No.</label><input class="inp inp-readonly" id="gstNo" placeholder="Auto-filled from firm" readonly></div>
@@ -510,11 +516,6 @@ function lw(){
     .then(function(response) { return response.json(); })
     .then(function(data) {
       window._firmData = data.firms || [];
-      var dl = document.getElementById('fld');
-      dl.innerHTML = '';
-      window._firmData.forEach(function(f){
-        dl.innerHTML += '<option value="'+f.name+'">';
-      });
       var existingFirm = document.getElementById('firmName').value;
       if(existingFirm) autoFillGST(existingFirm);
 
@@ -530,6 +531,33 @@ function lw(){
     .catch(function(err) { console.error('Data load error:', err); });
 }
 
+function escHtml(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function hideFirmDD(){
+  setTimeout(function(){
+    var dd=document.getElementById('firmDD');
+    if(dd)dd.classList.remove('show');
+  },150);
+}
+function selectFirm(name){
+  var inp=document.getElementById('firmName');
+  inp.value=name;
+  hideFirmDD();
+  autoFillGST(name);
+}
+function onFirmInput(val){
+  var dd=document.getElementById('firmDD');
+  if(!dd)return;
+  var firms=window._firmData||[];
+  var q=(val||'').trim().toLowerCase();
+  var matches=q?firms.filter(function(f){return f.name.toLowerCase().indexOf(q)!==-1;}):firms;
+  matches=matches.slice(0,50);
+  if(!matches.length){
+    dd.innerHTML='<div class="fdi-empty">No matching firm</div>';
+  }else{
+    dd.innerHTML=matches.map(function(f){return '<div class="fdi" onmousedown="selectFirm(\''+escHtml(f.name).replace(/'/g,"\\'")+'\')">'+escHtml(f.name)+'</div>';}).join('');
+  }
+  dd.classList.add('show');
+}
 function autoFillGST(firmName){
   var gstField=document.getElementById('gstNo');
   var badgeWrap=document.getElementById('gstBadgeWrap');
