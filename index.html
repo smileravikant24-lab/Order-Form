@@ -207,6 +207,17 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
   <button class="tab on" id="tO" onclick="sw('Order')">&#128203; Order</button>
   <button class="tab" id="tE" onclick="sw('Enquiry')">&#128269; Enquiry</button>
 </div>
+<div class="card fi" id="modBar">
+  <div class="card-b" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+    <div class="fld" style="flex:1;min-width:200px">
+      <label class="lbl">Modify Existing Order &#8212; Enter PI No.</label>
+      <input class="inp" id="modPiInput" placeholder="e.g. PI-SP/26-27/00425" autocomplete="off">
+    </div>
+    <button type="button" class="ab2 bg" style="height:42px" onclick="searchOrderToModify()">&#128269; Search &amp; Load</button>
+    <button type="button" class="ab2 bgr hd" id="modCancelBtn" style="height:42px" onclick="cancelModify()">&#10006; Cancel Modify</button>
+  </div>
+  <div id="modStatus" style="padding:0 20px 14px;font-size:12.5px;font-weight:600"></div>
+</div>
 <!-- FORM VIEW -->
 <div id="fv">
 <form id="mf" onsubmit="sub(event)">
@@ -264,7 +275,6 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
   <div class="card-b">
     <div class="ph go" id="phR"><span>Product Name</span><span>Qty (Box)</span><span>Qty (Ream)</span><span class="oc">Rate (&#8377;) <span class="gn">+18% GST incl.</span></span><span class="oc" id="discHdr" style="display:none"></span><span class="oc" style="text-align:right">Amount (&#8377;)</span><span></span></div>
     <div id="ic"></div>
-    <datalist id="ild"></datalist>
     <button type="button" class="ab" onclick="ar()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Add Item</button>
     <div class="of" id="totS" style="display:flex;justify-content:flex-end;margin-top:16px">
       <div class="tb">
@@ -411,9 +421,10 @@ const IT=["DOUBLE A A4 70 GSM","DOUBLE A A4 75 GSM","DOUBLE A A4 80 GSM","DOUBLE
 const packingMap={"DOUBLE A A4 70 GSM":5,"DOUBLE A A4 75 GSM":5,"DOUBLE A A4 80 GSM":5,"DOUBLE A A4 100 GSM":4,"N R COPIER A4 70 GSM":10,"N R COPIER A4 75 GSM":10,"N R COPIER A4 80 GSM":10,"N R COPIER A3 70 GSM":5,"N R COPIER A3 75 GSM":5,"KHANNA A4 KBOLT (S) 65 GSM":10,"KHANNA A4 EPRINT (S) 70 GSM":10,"KHANNA A4 ECOPY (S) 75 GSM":10,"KHANNA A3 KBOLT (S) 65 GSM":5,"SATIA A4 65 GSM":10,"SATIA A4 70 GSM":10,"SATIA A4 75 GSM":10,"SATIA A3 70 GSM":5,"ROZAANA A4 70 GSM":10,"I K COPIER A4 70 GSM":10,"P P LITE A4 70 GSM":10,"PAPER ONE A4 75 GSM":5,"PAPER ONE A4 100 GSM":4,"PAPER ONE A3 100 GSM":4,"MAPLE A4 70 GSM":10,"SPECTRA A4 75 GSM":10,"CENTURY STAR A4 75 GSM":10,"J K RED A4 75 GSM":10,"REFLECTION A4 65 GSM":10,"REFLECTION A4 70 GSM":10,"REFLECTION A4 75 GSM":10,"REFLECTION A4 100 GSM":5,"REFLECTION FS 70 GSM":10,"REFLECTION A3 70 GSM":5,"FINEPRINT A4 70 GSM":10,"FINEPRINT A4 75 GSM":10,"Tarang Yellow A4 75 GSM":5,"Tarang Pink A4 75 GSM":5,"Tarang Green A4 75 GSM":5,"Tarang Blue A4 75 GSM":5,"SATIA FS 70 GSM":10,"Tarang Ivory A4 75 GSM":5,"ROZAANA A4 75 GSM":10};
 
 const DOUBLE_A_DISCOUNT_PRODUCTS=["DOUBLE A A4 70 GSM","DOUBLE A A4 75 GSM","DOUBLE A A4 80 GSM"];
+const DEFAULT_PACKING_RATIO=5;
 
 function syncQty(el,type){
-  var row=el.closest('.pr'),pName=row.querySelector('.p-name').value,reamInp=row.querySelector('.q-ream'),boxInp=row.querySelector('.q-box'),perBox=packingMap[pName];
+  var row=el.closest('.pr'),pName=row.querySelector('.p-name').value,reamInp=row.querySelector('.q-ream'),boxInp=row.querySelector('.q-box'),perBox=packingMap[pName]||DEFAULT_PACKING_RATIO;
   if(!pName&&el.value!==''){alert('Pehle Product select karein!');el.value='';return;}
   if(type==='ream'){var rVal=parseInt(reamInp.value);if(rVal>0&&perBox){boxInp.value=(rVal/perBox).toFixed(2);boxInp.readOnly=true;boxInp.classList.add('disabled-bg');}else if(!reamInp.value){resetRowFields(reamInp,boxInp);}}
   else if(type==='box'){var bVal=parseFloat(boxInp.value);if(bVal>0&&perBox){reamInp.value=Math.round(bVal*perBox);reamInp.readOnly=true;reamInp.classList.add('disabled-bg');}else if(!boxInp.value){resetRowFields(reamInp,boxInp);}}
@@ -434,7 +445,7 @@ var BANK_IMG_P1='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BS
 
 <script>
 
-let CT='Order', FN='', _d=null, _submitting=false;
+let CT='Order', FN='', _d=null, _submitting=false, IS_UPDATE_MODE=false, MODIFY_ORIG_TIMESTAMP='';
 window._firmData=[];
 
 window.addEventListener('DOMContentLoaded',function(){
@@ -446,9 +457,6 @@ window.addEventListener('DOMContentLoaded',function(){
   lw();
   ar();
   loadLogo();
-  IT.forEach(function(n){
-    document.getElementById('ild').innerHTML+='<option value="'+n+'">';
-  });
 });
 
 function loadLogo(){
@@ -478,6 +486,8 @@ function loadLogo(){
 function sw(type){
   CT=type;
   var isO=(type==='Order');
+  document.getElementById('modBar').classList.toggle('hd',!isO);
+  if(!isO&&IS_UPDATE_MODE)cancelModify();
   document.getElementById('tO').className='tab'+(isO?' on':'');
   document.getElementById('tE').className='tab'+(!isO?' on':'');
   document.querySelectorAll('.of').forEach(function(el){el.classList.toggle('hd',!isO);});
@@ -487,7 +497,7 @@ function sw(type){
   var ph=document.getElementById('phR');
   ph.className='ph '+(isO?'go':'ge');
   if(!isO){
-    ph.innerHTML='<span>Product Name</span><span>Qty (Ream)</span><span>Qty (Box)</span><span></span>';
+    ph.innerHTML='<span>Product Name</span><span>Qty (Box)</span><span>Qty (Ream)</span><span></span>';
   }else{
     ph.innerHTML='<span>Product Name</span><span>Qty (Box)</span><span>Qty (Ream)</span><span class="oc">Rate (&#8377;) <span class="gn">+18% GST incl.</span></span><span class="oc" id="discHdr" style="display:none"></span><span class="oc" style="text-align:right">Amount (&#8377;)</span><span></span>';
   }
@@ -558,6 +568,36 @@ function onFirmInput(val){
   }
   dd.classList.add('show');
 }
+function showProductDD(el){
+  var dd=el.parentElement.querySelector('.firm-dd');
+  if(!dd)return;
+  var q=(el.value||'').trim().toLowerCase();
+  var names=(typeof IT!=='undefined'?IT:Object.keys(packingMap));
+  var matches=q?names.filter(function(n){return n.toLowerCase().indexOf(q)!==-1;}):names;
+  matches=matches.slice(0,50);
+  if(!matches.length){
+    dd.innerHTML='<div class="fdi-empty">No matching product</div>';
+  }else{
+    dd.innerHTML=matches.map(function(n){return '<div class="fdi" onmousedown="selectProduct(this,\''+escHtml(n).replace(/'/g,"\\'")+'\')">'+escHtml(n)+'</div>';}).join('');
+  }
+  dd.classList.add('show');
+}
+function onProductInput(el){
+  showProductDD(el);
+  onProdChange(el);
+}
+function hideProductDD(el){
+  var dd=el.parentElement.querySelector('.firm-dd');
+  setTimeout(function(){if(dd)dd.classList.remove('show');},150);
+}
+function selectProduct(itemEl,name){
+  var wrap=itemEl.closest('.fld');
+  var inp=wrap.querySelector('.p-name');
+  var dd=wrap.querySelector('.firm-dd');
+  inp.value=name;
+  dd.classList.remove('show');
+  onProdChange(inp);
+}
 function autoFillGST(firmName){
   var gstField=document.getElementById('gstNo');
   var badgeWrap=document.getElementById('gstBadgeWrap');
@@ -578,6 +618,7 @@ function autoFillGST(firmName){
 }
 
 function gfn(){
+  if(IS_UPDATE_MODE)return;
   fetch(WEB_APP_URL + '?action=getFormNumber&formType=' + CT)
     .then(function(response) { return response.json(); })
     .then(function(data) {
@@ -594,34 +635,126 @@ function gfn(){
     });
 }
 
+function searchOrderToModify(){
+  var piNo=(document.getElementById('modPiInput').value||'').trim();
+  var statusEl=document.getElementById('modStatus');
+  if(!piNo){
+    statusEl.style.color='var(--c-danger)';
+    statusEl.textContent='PI No. daalein.';
+    return;
+  }
+  statusEl.style.color='var(--c-muted)';
+  statusEl.textContent='Searching...';
+  fetch(WEB_APP_URL + '?action=getOrderByFormNumber&formNumber=' + encodeURIComponent(piNo))
+    .then(function(response){ return response.json(); })
+    .then(function(res){
+      if(!res.found){
+        statusEl.style.color='var(--c-danger)';
+        statusEl.textContent=res.message||'Order nahi mila. PI No. check karein.';
+        return;
+      }
+      populateFormForModify(res.order);
+      statusEl.style.color='#1a7a2e';
+      statusEl.textContent='Order load ho gaya — details edit karke "Update Order" dabayein.';
+    })
+    .catch(function(err){
+      statusEl.style.color='var(--c-danger)';
+      statusEl.textContent='Search error: '+err.message;
+    });
+}
+
+function cancelModify(){
+  IS_UPDATE_MODE=false;
+  MODIFY_ORIG_TIMESTAMP='';
+  document.getElementById('modCancelBtn').classList.add('hd');
+  document.getElementById('modPiInput').value='';
+  document.getElementById('modStatus').textContent='';
+  document.getElementById('sBtn').querySelector('#sTxt').textContent='Review & Submit';
+  document.getElementById('mf').reset();
+  document.getElementById('ic').innerHTML='';
+  document.getElementById('gstNo').value='';
+  document.getElementById('gstBadgeWrap').style.display='none';
+  ar();
+  var today=new Date().toISOString().split('T')[0];
+  document.getElementById('oDate').value=today;
+  gfn();
+}
+
+function populateFormForModify(o){
+  IS_UPDATE_MODE=true;
+  MODIFY_ORIG_TIMESTAMP=o.timestamp||'';
+  FN=o.formNumber;
+  document.getElementById('fnoDisp').textContent=FN+' (MODIFYING)';
+  document.getElementById('modCancelBtn').classList.remove('hd');
+
+  document.getElementById('firmName').value=o.firmName||'';
+  document.getElementById('gstNo').value=o.gstNo||'';
+  if(o.gstNo){
+    document.getElementById('gstBadgeVal').textContent=o.gstNo;
+    document.getElementById('gstBadgeWrap').style.display='block';
+  }
+  document.getElementById('areaName').value=o.areaName||'';
+  document.getElementById('custName').value=o.customerName||'';
+  document.getElementById('wap').value=o.whatsapp||'';
+  document.getElementById('sp1').value=o.salesPerson||'';
+  document.getElementById('oDate').value=o.orderDateISO||'';
+  document.getElementById('dDate').value=o.deliveryDateISO||'';
+  document.getElementById('cType').value=o.clientType||'';
+  document.getElementById('pTerms').value=o.paymentTerms||'';
+  tpd();
+  document.getElementById('pDays').value=o.paymentDays||'';
+
+  if(o.transportMode){
+    var tmRadio=document.querySelector('input[name="tm"][value="'+o.transportMode+'"]');
+    if(tmRadio){tmRadio.checked=true;st(o.transportMode);}
+  }
+  document.getElementById('tN').value=o.transportName||'';
+  document.getElementById('tNu').value=o.transporterNumber||'';
+  document.getElementById('tV').value=o.vehicleNumber||'';
+  document.getElementById('tD').value=o.driverNumber||'';
+  document.getElementById('tFr').value=o.freightAmount||'';
+  document.getElementById('rmk').value=o.remarks||'';
+
+  var ic=document.getElementById('ic');
+  ic.innerHTML='';
+  (o.items||[]).forEach(function(it){
+    ar();
+    var row=ic.lastElementChild;
+    row.querySelector('.p-name').value=it.name||'';
+    row.querySelector('.q-ream').value=it.ream||'';
+    row.querySelector('.q-box').value=it.box||'';
+    row.querySelector('.q-rate').value=it.origRate||it.rate||'';
+    if(it.discount){
+      var discWrap=row.querySelector('.disc-wrap');
+      discWrap.classList.add('show');
+      discWrap.classList.remove('hd');
+      row.querySelector('.q-disc').value=it.discount;
+    }
+  });
+  ct();
+  document.getElementById('sBtn').querySelector('#sTxt').textContent='Review & Update Order';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
 function ar(){
   var isO=(CT==='Order');
   var ic=document.getElementById('ic');
   var div=document.createElement('div');
   div.className='pr '+(isO?'go':'ge');
   div.innerHTML=
-    '<div class="fld fm">'
+    '<div class="fld fm" style="position:relative">'
       +'<span class="ml">Product</span>'
-      +'<input class="inp p-name" list="ild" placeholder="Select product..." onchange="onProdChange(this)" oninput="onProdChange(this)">'
+      +'<input class="inp p-name" placeholder="Select product..." autocomplete="off" onfocus="showProductDD(this)" oninput="onProductInput(this)" onblur="hideProductDD(this)">'
+      +'<div class="firm-dd"></div>'
     +'</div>'
-    +(isO
-      ? '<div class="fld box-wrap">'
-          +'<span class="ml">Box Qty</span>'
-          +'<input class="inp inp-mono q-box" type="number" min="0" step="0.01" placeholder="0.00" oninput="syncQty(this,\'box\')">'
-        +'</div>'
-        +'<div class="fld">'
-          +'<span class="ml">Ream Qty</span>'
-          +'<input class="inp inp-mono q-ream" type="number" min="1" placeholder="0" oninput="syncQty(this,\'ream\')">'
-        +'</div>'
-      : '<div class="fld">'
-          +'<span class="ml">Ream Qty</span>'
-          +'<input class="inp inp-mono q-ream" type="number" min="1" placeholder="0" oninput="syncQty(this,\'ream\')">'
-        +'</div>'
-        +'<div class="fld box-wrap">'
-          +'<span class="ml">Box Qty</span>'
-          +'<input class="inp inp-mono q-box" type="number" min="0" step="0.01" placeholder="0.00" oninput="syncQty(this,\'box\')">'
-        +'</div>'
-    )
+    +'<div class="fld box-wrap">'
+        +'<span class="ml">Box Qty</span>'
+        +'<input class="inp inp-mono q-box" type="number" min="0" step="0.01" placeholder="0.00" oninput="syncQty(this,\'box\')">'
+      +'</div>'
+      +'<div class="fld">'
+        +'<span class="ml">Ream Qty</span>'
+        +'<input class="inp inp-mono q-ream" type="number" min="1" placeholder="0" oninput="syncQty(this,\'ream\')">'
+      +'</div>'
     +'<div class="fld rate-wrap'+(isO?'':' hd')+'">'
       +'<span class="ml">Rate (&#8377;) <span style="color:var(--c-danger)">*</span></span>'
       +'<input class="inp inp-mono q-rate" type="text" inputmode="decimal" placeholder="&#8377; Rate..." oninput="limitRate(this);ct()" onkeypress="return /[0-9.]/.test(event.key)">'
@@ -846,6 +979,8 @@ function sub(e){
   var d={
     formType:CT,
     formNumber:FN,
+    isUpdate:IS_UPDATE_MODE,
+    originalTimestamp:MODIFY_ORIG_TIMESTAMP,
     firmName:tp(document.getElementById('firmName').value),
     gstNo:document.getElementById('gstNo').value.trim(),
     areaName:tp(document.getElementById('areaName').value),
@@ -1004,7 +1139,7 @@ function showReview(d){
   }
 
   document.getElementById('confirmBtn').disabled=false;
-  document.getElementById('confirmTxt').textContent='✓ Confirm & Submit';
+  document.getElementById('confirmTxt').textContent=d.isUpdate?'✓ Confirm & Update':'✓ Confirm & Submit';
   document.getElementById('confirmSpn').classList.add('hd');
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -1076,8 +1211,14 @@ function doSubmit(d,btn,sTxt,sSpn){
         var driveUrl=res.pdfUrl||'';
         if(driveUrl)_d.driveUrl=driveUrl;
         document.getElementById('reviewView').classList.add('hd');
-        showModal(d.formNumber,d.formType||CT,driveUrl);
+        showModal(d.formNumber,d.formType||CT,driveUrl,d.isUpdate);
         sr(d,driveUrl);
+        IS_UPDATE_MODE=false;
+        MODIFY_ORIG_TIMESTAMP='';
+        document.getElementById('modCancelBtn').classList.add('hd');
+        document.getElementById('modPiInput').value='';
+        document.getElementById('modStatus').textContent='';
+        gfn();
       }else{
         alert(res.message||'Error! Dobara try karein.');
       }
@@ -1102,11 +1243,12 @@ function doSubmit(d,btn,sTxt,sSpn){
   },0);
 }
 
-function showModal(fno,ftype,driveUrl){
+function showModal(fno,ftype,driveUrl,isUpdate){
   var m=document.getElementById('dlModal');
+  var titleWord=isUpdate?'Updated':'Submitted';
   m.innerHTML='<div class="modal-overlay"><div class="modal-box">'
     +'<div class="modal-icon">&#9989;</div>'
-    +'<div class="modal-title">'+(ftype==='Order'?'Order':'Enquiry')+' Submitted!</div>'
+    +'<div class="modal-title">'+(ftype==='Order'?'Order':'Enquiry')+' '+titleWord+'!</div>'
     +'<div class="modal-msg">'
     +'Form No: <strong>'+fno+'</strong><br>'
     +'Successfully saved to Google Sheets.<br>'
@@ -1569,6 +1711,12 @@ function generatePDFDoc(d){
 function rst(){
   _d=null;
   _submitting=false;
+  IS_UPDATE_MODE=false;
+  MODIFY_ORIG_TIMESTAMP='';
+  document.getElementById('modCancelBtn').classList.add('hd');
+  document.getElementById('modPiInput').value='';
+  document.getElementById('modStatus').textContent='';
+  document.getElementById('sBtn').querySelector('#sTxt').textContent='Review & Submit';
   document.getElementById('mf').reset();
   document.getElementById('ic').innerHTML='';
   document.getElementById('gstNo').value='';
