@@ -43,6 +43,45 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+// Scans the sheet once to find the highest serial already used for this
+// form-type + financial-year combo. Only called the very first time a
+// combo is needed after deployment (or a new FY starts) — after that,
+// getNextFormNumber() reads/writes a cached counter instead, which is why
+// the PI No. used to take a while to show up (it re-scanned the whole
+// Orders sheet on every single page load / new entry) and is now instant.
+function scanMaxSerialFromSheet(formType, fy) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var isOrder = (formType === 'Order');
+  var baseType = isOrder ? 'PI-SP' : 'Enq-SP';
+  var sheetName = isOrder ? 'Orders' : 'Enquiries';
+  var sheet = ss.getSheetByName(sheetName);
+  var maxSerial = 0;
+
+  if (sheet) {
+    var lastRow = sheet.getLastRow();
+    if (lastRow >= 2) {
+      // NOTE: Form Numbers live in Column B. If that ever changes,
+      // update idColumn accordingly.
+      var idColumn = 2;
+      var allFormNos = sheet.getRange(2, idColumn, lastRow - 1, 1).getValues();
+
+      for (var i = 0; i < allFormNos.length; i++) {
+        var cellVal = (allFormNos[i][0] || '').toString().trim();
+        if (cellVal.includes(baseType) && cellVal.includes(fy)) {
+          var match = cellVal.match(/\d+$/);
+          if (match) {
+            var serialNum = parseInt(match[0], 10);
+            if (!isNaN(serialNum) && serialNum > maxSerial) {
+              maxSerial = serialNum;
+            }
+          }
+        }
+      }
+    }
+  }
+  return maxSerial;
+}
+
 function getNextFormNumber(formType) {
   // 1. Lock system to prevent duplicate numbers during simultaneous submissions
   var lock = LockService.getScriptLock();
@@ -50,58 +89,26 @@ function getNextFormNumber(formType) {
   try {
     lock.waitLock(10000);
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
     var fy = getCurrentFY();
-
     var isOrder = (formType === 'Order');
-
-    // The exact prefix to use for NEW numbers
     var prefix = isOrder ? ('PI-SP/' + fy + '/') : ('Enq-SP/' + fy + '/');
 
-    // The base text to search for in EXISTING numbers
-    var baseType = isOrder ? 'PI-SP' : 'Enq-SP';
+    var props = PropertiesService.getScriptProperties();
+    var cacheKey = 'SERIAL_' + (isOrder ? 'Order' : 'Enquiry') + '_' + fy;
 
-    var sheetName = isOrder ? 'Orders' : 'Enquiries';
-    var sheet = ss.getSheetByName(sheetName);
-
-    var maxSerial = 0;
-
-    if (sheet) {
-      var lastRow = sheet.getLastRow();
-
-      if (lastRow >= 2) {
-        // NOTE: Your original code used Column B (2).
-        // If your Form Numbers are in Column A, change this to 1.
-        var idColumn = 2;
-
-        var allFormNos = sheet.getRange(2, idColumn, lastRow - 1, 1).getValues();
-
-        for (var i = 0; i < allFormNos.length; i++) {
-          var cellVal = (allFormNos[i][0] || '').toString().trim();
-
-          // Check if the cell belongs to the correct form type (PI vs Enq)
-          // AND belongs to the current Financial Year
-          if (cellVal.includes(baseType) && cellVal.includes(fy)) {
-
-            // Extract ONLY the numbers at the very end of the string (e.g., "00077")
-            // This prevents resets caused by missing slashes or extra spaces
-            var match = cellVal.match(/\d+$/);
-
-            if (match) {
-              var serialNum = parseInt(match[0], 10);
-
-              // Update maxSerial if we found a higher number
-              if (!isNaN(serialNum) && serialNum > maxSerial) {
-                maxSerial = serialNum;
-              }
-            }
-          }
-        }
-      }
+    var maxSerial = parseInt(props.getProperty(cacheKey), 10);
+    if (isNaN(maxSerial)) {
+      // First request for this form-type + FY since deployment (or a new
+      // FY just started) — do the one-time full scan to catch up, then
+      // cache it so every later call is a cheap property read/write.
+      maxSerial = scanMaxSerialFromSheet(formType, fy);
     }
 
+    var nextSerial = maxSerial + 1;
+    props.setProperty(cacheKey, String(nextSerial));
+
     // Generate the next number and pad it to 5 digits (e.g., 00078)
-    return prefix + String(maxSerial + 1).padStart(5, '0');
+    return prefix + String(nextSerial).padStart(5, '0');
 
   } catch (e) {
     console.error("Error generating form number: " + e.message);
