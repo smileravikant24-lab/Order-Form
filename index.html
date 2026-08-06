@@ -210,8 +210,8 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
 <div class="card fi" id="modBar">
   <div class="card-b" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
     <div class="fld" style="flex:1;min-width:200px">
-      <label class="lbl">Modify Existing Order &#8212; Enter PI No.</label>
-      <input class="inp" id="modPiInput" placeholder="e.g. PI-SP/26-27/00425" autocomplete="off">
+      <label class="lbl">Modify Existing Order &#8212; PI No. ya sirf number daalein</label>
+      <input class="inp" id="modPiInput" placeholder="Full PI No. ya sirf number (e.g. 425)" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();searchOrderToModify();}">
     </div>
     <button type="button" class="ab2 bg" style="height:42px" onclick="searchOrderToModify()">&#128269; Search &amp; Load</button>
     <button type="button" class="ab2 bgr hd" id="modCancelBtn" style="height:42px" onclick="cancelModify()">&#10006; Cancel Modify</button>
@@ -640,27 +640,41 @@ function searchOrderToModify(){
   var statusEl=document.getElementById('modStatus');
   if(!piNo){
     statusEl.style.color='var(--c-danger)';
-    statusEl.textContent='PI No. daalein.';
+    statusEl.innerHTML='PI No. ya sirf number daalein.';
     return;
   }
   statusEl.style.color='var(--c-muted)';
-  statusEl.textContent='Searching...';
+  statusEl.innerHTML='Searching...';
   fetch(WEB_APP_URL + '?action=getOrderByFormNumber&formNumber=' + encodeURIComponent(piNo))
     .then(function(response){ return response.json(); })
     .then(function(res){
-      if(!res.found){
-        statusEl.style.color='var(--c-danger)';
-        statusEl.textContent=res.message||'Order nahi mila. PI No. check karein.';
+      if(res.found){
+        populateFormForModify(res.order);
+        statusEl.style.color='#1a7a2e';
+        statusEl.innerHTML='Order load ho gaya — details edit karke "Update Order" dabayein.';
         return;
       }
-      populateFormForModify(res.order);
-      statusEl.style.color='#1a7a2e';
-      statusEl.textContent='Order load ho gaya — details edit karke "Update Order" dabayein.';
+      if(res.multiple && res.matches && res.matches.length){
+        statusEl.style.color='var(--c-muted)';
+        statusEl.innerHTML='<div style="margin-bottom:6px">'+res.matches.length+' orders mile, ek select karein:</div>'
+          + res.matches.map(function(m){
+              return '<div class="fdi" style="border:1px solid var(--c-border);border-radius:6px;padding:8px 12px;margin-bottom:4px;cursor:pointer;background:#fff" onmousedown="selectModifyCandidate(\''+escHtml(m.formNumber).replace(/'/g,"\\'")+'\')">'
+                +'<strong>'+escHtml(m.formNumber)+'</strong> &#8212; '+escHtml(m.firmName||'')
+                +'<span style="color:var(--c-muted)"> ('+escHtml(m.customerName||'')+')</span></div>';
+            }).join('');
+        return;
+      }
+      statusEl.style.color='var(--c-danger)';
+      statusEl.textContent=res.message||'Order nahi mila. PI No. check karein.';
     })
     .catch(function(err){
       statusEl.style.color='var(--c-danger)';
       statusEl.textContent='Search error: '+err.message;
     });
+}
+function selectModifyCandidate(fn){
+  document.getElementById('modPiInput').value=fn;
+  searchOrderToModify();
 }
 
 function cancelModify(){

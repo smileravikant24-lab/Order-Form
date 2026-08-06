@@ -537,9 +537,22 @@ function updateOrder(formData, timestamp) {
 // Looks up an existing order by its PI No. (Form No) so it can be loaded
 // back into the form for editing. Returns all item rows + the shared
 // header fields from the first row.
-function getOrderByFormNumber(formNumber) {
-  formNumber = (formNumber || '').toString().trim();
-  if (!formNumber) return { found: false, message: 'PI No. required.' };
+var ORDER_LOOKUP_COLS = {
+  timestamp: 0, formNo: 1, firmName: 2, gstNo: 3, area: 4, customerName: 5,
+  whatsapp: 6, salesPerson: 7, orderDate: 8, deliveryDate: 9,
+  clientType: 10, paymentTerms: 11, paymentDays: 12,
+  transportMode: 13, transportName: 14, transporterNumber: 15, vehicleNumber: 16, driverNumber: 17,
+  productName: 18, ream: 19, box: 20, origRate: 21, discount: 22, netRate: 23, freight: 24,
+  remarks: 29
+};
+
+// Accepts a full PI No. (e.g. "PI-SP/26-27/00425") OR just a fragment/number
+// (e.g. "425" or "00425") so the user doesn't have to type the whole thing.
+// Exact match wins outright; otherwise every order whose PI No. contains the
+// typed text is offered back as a pick-list for the client to disambiguate.
+function getOrderByFormNumber(query) {
+  query = (query || '').toString().trim();
+  if (!query) return { found: false, message: 'PI No. ya order number daalein.' };
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName('Orders');
@@ -550,20 +563,45 @@ function getOrderByFormNumber(formNumber) {
 
   var numCols = ORDER_DETAIL_HEADERS.length;
   var values = sheet.getRange(2, 1, lastRow - 1, numCols).getValues();
+  var col = ORDER_LOOKUP_COLS;
 
-  var col = {
-    timestamp: 0, formNo: 1, firmName: 2, gstNo: 3, area: 4, customerName: 5,
-    whatsapp: 6, salesPerson: 7, orderDate: 8, deliveryDate: 9,
-    clientType: 10, paymentTerms: 11, paymentDays: 12,
-    transportMode: 13, transportName: 14, transporterNumber: 15, vehicleNumber: 16, driverNumber: 17,
-    productName: 18, ream: 19, box: 20, origRate: 21, discount: 22, netRate: 23, freight: 24,
-    remarks: 29
-  };
+  // Distinct PI numbers in the sheet, most-recently-added first.
+  var seen = {};
+  var order = [];
+  for (var i = 0; i < values.length; i++) {
+    var fn = (values[i][col.formNo] || '').toString().trim();
+    if (!fn || seen[fn]) continue;
+    seen[fn] = { formNumber: fn, firmName: values[i][col.firmName] || '', customerName: values[i][col.customerName] || '' };
+    order.push(fn);
+  }
+  order.reverse();
+
+  var qUpper = query.toUpperCase();
+  var formNumber = null;
+  for (var k = 0; k < order.length; k++) {
+    if (order[k].toUpperCase() === qUpper) { formNumber = order[k]; break; }
+  }
+
+  if (!formNumber) {
+    var matches = order.filter(function(fn){ return fn.toUpperCase().indexOf(qUpper) !== -1; });
+    if (!matches.length) {
+      return { found: false, message: '"' + query + '" ke liye koi order nahi mila.' };
+    }
+    if (matches.length > 1) {
+      return {
+        found: false,
+        multiple: true,
+        message: matches.length + ' orders mile, ek select karein.',
+        matches: matches.slice(0, 20).map(function(fn){ return seen[fn]; })
+      };
+    }
+    formNumber = matches[0];
+  }
 
   var matchedRows = [];
-  for (var i = 0; i < values.length; i++) {
-    var cellFn = (values[i][col.formNo] || '').toString().trim();
-    if (cellFn === formNumber) matchedRows.push(values[i]);
+  for (var m = 0; m < values.length; m++) {
+    var cellFn = (values[m][col.formNo] || '').toString().trim();
+    if (cellFn === formNumber) matchedRows.push(values[m]);
   }
 
   if (!matchedRows.length) {
