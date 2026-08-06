@@ -82,8 +82,55 @@ function scanMaxSerialFromSheet(formType, fy) {
   return maxSerial;
 }
 
+function getSerialCacheKey(formType, fy) {
+  var isOrder = (formType === 'Order');
+  // "V2" so any stale/inflated counter left over from an earlier buggy
+  // version is ignored and re-derived from the actual sheet instead of
+  // being trusted as-is.
+  return 'SERIAL_V2_' + (isOrder ? 'Order' : 'Enquiry') + '_' + fy;
+}
+
+function getCachedMaxSerial(formType, fy) {
+  var props = PropertiesService.getScriptProperties();
+  var cacheKey = getSerialCacheKey(formType, fy);
+  var cached = parseInt(props.getProperty(cacheKey), 10);
+  if (isNaN(cached)) {
+    cached = scanMaxSerialFromSheet(formType, fy);
+    props.setProperty(cacheKey, String(cached));
+  }
+  return cached;
+}
+
+// Called only after an order/enquiry is actually written to the sheet, so
+// the cache tracks reality. This is the ONLY place the counter moves
+// forward — merely previewing a number (page load, tab switch, refresh)
+// must never consume one.
+function bumpSerialCache(formType, formNumber) {
+  try {
+    var match = (formNumber || '').toString().match(/(\d+)$/);
+    if (!match) return;
+    var serial = parseInt(match[1], 10);
+    if (isNaN(serial)) return;
+
+    var fy = getCurrentFY();
+    var props = PropertiesService.getScriptProperties();
+    var cacheKey = getSerialCacheKey(formType, fy);
+    var current = parseInt(props.getProperty(cacheKey), 10);
+    if (isNaN(current) || serial > current) {
+      props.setProperty(cacheKey, String(serial));
+    }
+  } catch (e) {
+    Logger.log('bumpSerialCache error: ' + e.message);
+  }
+}
+
+// PEEK ONLY — this is what the form shows and what refreshes on every page
+// load / tab switch. It must be side-effect-free: it never reserves or
+// consumes a number, it just reports "next one would be X" based on the
+// cached max (falling back to a one-time sheet scan if nothing is cached
+// yet). The number only actually gets used once bumpSerialCache() runs,
+// which happens after a real save — see processOrder / processEnquiry.
 function getNextFormNumber(formType) {
-  // 1. Lock system to prevent duplicate numbers during simultaneous submissions
   var lock = LockService.getScriptLock();
 
   try {
@@ -93,28 +140,15 @@ function getNextFormNumber(formType) {
     var isOrder = (formType === 'Order');
     var prefix = isOrder ? ('PI-SP/' + fy + '/') : ('Enq-SP/' + fy + '/');
 
-    var props = PropertiesService.getScriptProperties();
-    var cacheKey = 'SERIAL_' + (isOrder ? 'Order' : 'Enquiry') + '_' + fy;
-
-    var maxSerial = parseInt(props.getProperty(cacheKey), 10);
-    if (isNaN(maxSerial)) {
-      // First request for this form-type + FY since deployment (or a new
-      // FY just started) — do the one-time full scan to catch up, then
-      // cache it so every later call is a cheap property read/write.
-      maxSerial = scanMaxSerialFromSheet(formType, fy);
-    }
-
-    var nextSerial = maxSerial + 1;
-    props.setProperty(cacheKey, String(nextSerial));
+    var maxSerial = getCachedMaxSerial(formType, fy);
 
     // Generate the next number and pad it to 5 digits (e.g., 00078)
-    return prefix + String(nextSerial).padStart(5, '0');
+    return prefix + String(maxSerial + 1).padStart(5, '0');
 
   } catch (e) {
     console.error("Error generating form number: " + e.message);
     throw new Error("System busy, please try again.");
   } finally {
-    // 2. Always release the lock
     lock.releaseLock();
   }
 }
@@ -406,6 +440,8 @@ function processOrder(formData, timestamp) {
   summarySheet.getRange(summaryStartRow, 1, 1, built.summaryHeaders.length)
               .setValues([built.summaryRow]);
   applyBatchRowFormat(summarySheet, summaryStartRow, 1, built.summaryHeaders.length);
+
+  bumpSerialCache('Order', formData.formNumber);
 
   var pdfUrl = '';
   try {
@@ -749,6 +785,8 @@ function processEnquiry(formData, timestamp) {
   var startRow = sheet.getLastRow() + 1;
   sheet.getRange(startRow, 1, allRows.length, headers.length).setValues(allRows);
   applyBatchRowFormat(sheet, startRow, allRows.length, headers.length);
+
+  bumpSerialCache('Enquiry', formData.formNumber);
 
   var pdfUrl = '';
   try {
