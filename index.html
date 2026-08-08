@@ -635,6 +635,8 @@ function gfn(){
     });
 }
 
+var MODIFY_PIN_VERIFIED=false;
+
 function searchOrderToModify(){
   var piNo=(document.getElementById('modPiInput').value||'').trim();
   var statusEl=document.getElementById('modStatus');
@@ -643,6 +645,34 @@ function searchOrderToModify(){
     statusEl.innerHTML='PI No. ya sirf number daalein.';
     return;
   }
+  if(!MODIFY_PIN_VERIFIED){
+    var pin=prompt('Order modify karne ke liye PIN daalein:');
+    if(pin===null)return;
+    statusEl.style.color='var(--c-muted)';
+    statusEl.innerHTML='PIN verify ho raha hai...';
+    fetch(WEB_APP_URL + '?action=verifyModifyPin&pin=' + encodeURIComponent(pin))
+      .then(function(response){ return response.json(); })
+      .then(function(res){
+        if(res.valid){
+          MODIFY_PIN_VERIFIED=true;
+          doSearchOrderToModify();
+        }else{
+          statusEl.style.color='var(--c-danger)';
+          statusEl.innerHTML='Galat PIN! Dobara try karein.';
+        }
+      })
+      .catch(function(err){
+        statusEl.style.color='var(--c-danger)';
+        statusEl.textContent='PIN check error: '+err.message;
+      });
+    return;
+  }
+  doSearchOrderToModify();
+}
+
+function doSearchOrderToModify(){
+  var piNo=(document.getElementById('modPiInput').value||'').trim();
+  var statusEl=document.getElementById('modStatus');
   statusEl.style.color='var(--c-muted)';
   statusEl.innerHTML='Searching...';
   fetch(WEB_APP_URL + '?action=getOrderByFormNumber&formNumber=' + encodeURIComponent(piNo))
@@ -680,6 +710,7 @@ function selectModifyCandidate(fn){
 function cancelModify(){
   IS_UPDATE_MODE=false;
   MODIFY_ORIG_TIMESTAMP='';
+  MODIFY_PIN_VERIFIED=false;
   document.getElementById('modCancelBtn').classList.add('hd');
   document.getElementById('modPiInput').value='';
   document.getElementById('modStatus').textContent='';
@@ -1229,6 +1260,7 @@ function doSubmit(d,btn,sTxt,sSpn){
         sr(d,driveUrl);
         IS_UPDATE_MODE=false;
         MODIFY_ORIG_TIMESTAMP='';
+        MODIFY_PIN_VERIFIED=false;
         document.getElementById('modCancelBtn').classList.add('hd');
         document.getElementById('modPiInput').value='';
         document.getElementById('modStatus').textContent='';
@@ -1727,6 +1759,7 @@ function rst(){
   _submitting=false;
   IS_UPDATE_MODE=false;
   MODIFY_ORIG_TIMESTAMP='';
+  MODIFY_PIN_VERIFIED=false;
   document.getElementById('modCancelBtn').classList.add('hd');
   document.getElementById('modPiInput').value='';
   document.getElementById('modStatus').textContent='';

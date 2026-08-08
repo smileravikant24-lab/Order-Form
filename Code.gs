@@ -17,6 +17,10 @@ var WHATSAPP_CONFIG = {
   PHONE:    '919899708020'
 };
 
+// PIN required to modify an existing order (search-by-PI-No. feature).
+// Change this to whatever PIN you want the team to use.
+var MODIFY_ORDER_PIN = '1234';
+
 
 function doGet(e) {
   if (e.parameter.action === 'getInitialData') {
@@ -35,6 +39,12 @@ function doGet(e) {
   if (e.parameter.action === 'getOrderByFormNumber') {
     var result = getOrderByFormNumber(e.parameter.formNumber);
     return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (e.parameter.action === 'verifyModifyPin') {
+    var isValid = (e.parameter.pin || '').toString().trim() === MODIFY_ORDER_PIN;
+    return ContentService.createTextOutput(JSON.stringify({ valid: isValid }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
