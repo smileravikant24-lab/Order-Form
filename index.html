@@ -45,6 +45,8 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
 .firm-dd .fdi:last-child{border-bottom:none}
 .firm-dd .fdi:hover,.firm-dd .fdi.active{background:var(--c-surface-alt)}
 .firm-dd .fdi-empty{padding:10px 14px;font-size:13px;color:var(--c-muted);cursor:default}
+.firm-dd .fdi-add{padding:10px 14px;font-size:13px;font-weight:600;color:var(--c-primary-dark);background:var(--c-surface-alt);cursor:pointer;border-top:1.5px dashed var(--c-primary)}
+.firm-dd .fdi-add:hover{background:#e4efdd}
 .inp-mono{font-family:'JetBrains Mono',monospace;font-weight:700;text-align:right;background:var(--c-surface-alt)}
 .inp-readonly{background:var(--c-surface-alt)!important;color:var(--c-muted)!important;cursor:default}
 .ph,.pr{display:grid;gap:10px;align-items:end}
@@ -579,12 +581,32 @@ function onFirmInput(val){
   var q=(val||'').trim().toLowerCase();
   var matches=q?firms.filter(function(f){return f.name.toLowerCase().indexOf(q)!==-1;}):firms;
   matches=matches.slice(0,50);
-  if(!matches.length){
-    dd.innerHTML='<div class="fdi-empty">No matching firm</div>';
-  }else{
-    dd.innerHTML=matches.map(function(f){return '<div class="fdi" onmousedown="selectFirm(\''+escHtml(f.name).replace(/'/g,"\\'")+'\')">'+escHtml(f.name)+'</div>';}).join('');
+  var html=matches.length
+    ? matches.map(function(f){return '<div class="fdi" onmousedown="selectFirm(\''+escHtml(f.name).replace(/'/g,"\\'")+'\')">'+escHtml(f.name)+'</div>';}).join('')
+    : (q?'<div class="fdi-empty">No matching firm</div>':'');
+  var trimmedVal=(val||'').trim();
+  var exactKnown=trimmedVal&&firms.some(function(f){return f.name.trim().toUpperCase()===trimmedVal.toUpperCase();});
+  if(trimmedVal&&!exactKnown){
+    html+='<div class="fdi fdi-add" onmousedown="addNewFirmFromDropdown(\''+escHtml(trimmedVal).replace(/'/g,"\\'")+'\')">&#10133; "'+escHtml(trimmedVal)+'" ko <strong>naye party</strong> ke roop me add karein</div>';
   }
+  dd.innerHTML=html;
   dd.classList.add('show');
+}
+function addNewFirmFromDropdown(name){
+  var gstField=document.getElementById('gstNo');
+  var gst=gstField.value.trim();
+  if(!gst){
+    gst=(prompt('GST No. daalein "'+name+'" ke liye (khaali chhod sakte hain agar nahi hai):')||'').trim();
+  }
+  if(!confirmAndRegisterNewFirm(name,gst))return;
+  document.getElementById('firmName').value=name;
+  gstField.value=gst.toUpperCase();
+  hideFirmDD();
+  var badgeWrap=document.getElementById('gstBadgeWrap');
+  if(gst){
+    document.getElementById('gstBadgeVal').textContent=gst.toUpperCase();
+    badgeWrap.style.display='block';
+  }
 }
 function showProductDD(el){
   var dd=el.parentElement.querySelector('.firm-dd');
@@ -593,12 +615,25 @@ function showProductDD(el){
   var names=(typeof IT!=='undefined'?IT:Object.keys(packingMap));
   var matches=q?names.filter(function(n){return n.toLowerCase().indexOf(q)!==-1;}):names;
   matches=matches.slice(0,50);
-  if(!matches.length){
-    dd.innerHTML='<div class="fdi-empty">No matching product</div>';
-  }else{
-    dd.innerHTML=matches.map(function(n){return '<div class="fdi" onmousedown="selectProduct(this,\''+escHtml(n).replace(/'/g,"\\'")+'\')">'+escHtml(n)+'</div>';}).join('');
+  var html=matches.length
+    ? matches.map(function(n){return '<div class="fdi" onmousedown="selectProduct(this,\''+escHtml(n).replace(/'/g,"\\'")+'\')">'+escHtml(n)+'</div>';}).join('')
+    : (q?'<div class="fdi-empty">No matching product</div>':'');
+  var trimmedVal=(el.value||'').trim();
+  var exactKnown=trimmedVal&&names.some(function(n){return n.toUpperCase()===trimmedVal.toUpperCase();});
+  if(trimmedVal&&!exactKnown){
+    html+='<div class="fdi fdi-add" onmousedown="addNewProductFromDropdown(this,\''+escHtml(trimmedVal).replace(/'/g,"\\'")+'\')">&#10133; "'+escHtml(trimmedVal)+'" ko <strong>naye product</strong> ke roop me add karein</div>';
   }
+  dd.innerHTML=html;
   dd.classList.add('show');
+}
+function addNewProductFromDropdown(itemEl,name){
+  if(!confirmAndRegisterNewProduct(name))return;
+  var wrap=itemEl.closest('.fld');
+  var inp=wrap.querySelector('.p-name');
+  var dd=wrap.querySelector('.firm-dd');
+  inp.value=name;
+  dd.classList.remove('show');
+  onProdChange(inp);
 }
 function onProductInput(el){
   showProductDD(el);
