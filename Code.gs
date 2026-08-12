@@ -3,6 +3,30 @@ var FIRM_SHEET_NAME = 'WMS_Firms';
 var FIRM_COLUMN     = 1;
 var GST_COLUMN      = 2;
 
+// Product master lives as a second tab in the same master spreadsheet as
+// the firm master. New products confirmed by the user (see
+// addNewProductToMaster) get appended here.
+var PRODUCT_SHEET_NAME = 'WMS_Products';
+var DEFAULT_PACKING_RATIO_SERVER = 5;
+
+// Seeds the product master with the products already known to the form,
+// so deploying this doesn't suddenly treat all of them as "new". Ream Per
+// Box values match the existing packingMap in index.html.
+var DEFAULT_PRODUCT_SEED = [
+  ['DOUBLE A A4 70 GSM', 5], ['DOUBLE A A4 75 GSM', 5], ['DOUBLE A A4 80 GSM', 5], ['DOUBLE A A4 100 GSM', 4],
+  ['N R COPIER A4 70 GSM', 10], ['N R COPIER A4 75 GSM', 10], ['N R COPIER A4 80 GSM', 10], ['N R COPIER A3 70 GSM', 5], ['N R COPIER A3 75 GSM', 5],
+  ['KHANNA A4 KBOLT (S) 65 GSM', 10], ['KHANNA A4 EPRINT (S) 70 GSM', 10], ['KHANNA A4 ECOPY (S) 75 GSM', 10], ['KHANNA A3 KBOLT (S) 65 GSM', 5],
+  ['SATIA A4 65 GSM', 10], ['SATIA A4 70 GSM', 10], ['SATIA A4 75 GSM', 10], ['SATIA A3 70 GSM', 5], ['SATIA FS 70 GSM', 10],
+  ['ROZAANA A4 70 GSM', 10], ['ROZAANA A4 75 GSM', 10],
+  ['I K COPIER A4 70 GSM', 10], ['P P LITE A4 70 GSM', 10],
+  ['PAPER ONE A4 75 GSM', 5], ['PAPER ONE A4 100 GSM', 4], ['PAPER ONE A3 100 GSM', 4],
+  ['MAPLE A4 70 GSM', 10], ['SPECTRA A4 75 GSM', 10], ['CENTURY STAR A4 75 GSM', 10], ['J K RED A4 75 GSM', 10],
+  ['REFLECTION A4 65 GSM', 10], ['REFLECTION A4 70 GSM', 10], ['REFLECTION A4 75 GSM', 10], ['REFLECTION A4 100 GSM', 5],
+  ['REFLECTION FS 70 GSM', 10], ['REFLECTION A3 70 GSM', 5],
+  ['FINEPRINT A4 70 GSM', 10], ['FINEPRINT A4 75 GSM', 10],
+  ['Tarang Yellow A4 75 GSM', 5], ['Tarang Pink A4 75 GSM', 5], ['Tarang Green A4 75 GSM', 5], ['Tarang Blue A4 75 GSM', 5], ['Tarang Ivory A4 75 GSM', 5]
+];
+
 var SALES_PERSONS = [
   'MR. PAWAN NEGI',
   'MR. PRANAV SATIJA',
@@ -26,7 +50,20 @@ function doGet(e) {
   if (e.parameter.action === 'getInitialData') {
     var firms = getFirmData();
     var salesPersons = getSalesPersons();
-    return ContentService.createTextOutput(JSON.stringify({ firms: firms, salesPersons: salesPersons }))
+    var products = getProductData();
+    return ContentService.createTextOutput(JSON.stringify({ firms: firms, salesPersons: salesPersons, products: products }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (e.parameter.action === 'addNewFirm') {
+    var firmResult = addNewFirmToMaster(e.parameter.name, e.parameter.gst);
+    return ContentService.createTextOutput(JSON.stringify(firmResult))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (e.parameter.action === 'addNewProduct') {
+    var productResult = addNewProductToMaster(e.parameter.name, e.parameter.perBox);
+    return ContentService.createTextOutput(JSON.stringify(productResult))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
@@ -207,6 +244,110 @@ function getFirmData() {
 
 function getFirmNames() {
   return getFirmData().map(function(d){ return d.name; });
+}
+
+function getProductSheet_() {
+  var externalSS = SpreadsheetApp.openByUrl(FIRM_SHEET_URL);
+  var sheet = externalSS.getSheetByName(PRODUCT_SHEET_NAME);
+  if (!sheet) {
+    sheet = externalSS.insertSheet(PRODUCT_SHEET_NAME);
+    sheet.appendRow(['Product Name', 'Ream Per Box']);
+    sheet.setFrozenRows(1);
+    if (DEFAULT_PRODUCT_SEED.length) {
+      sheet.getRange(2, 1, DEFAULT_PRODUCT_SEED.length, 2).setValues(DEFAULT_PRODUCT_SEED);
+    }
+  }
+  return sheet;
+}
+
+function getProductData() {
+  try {
+    var sheet = getProductSheet_();
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return [];
+    var values = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+    var result = [];
+    for (var i = 0; i < values.length; i++) {
+      var name = (values[i][0] || '').toString().trim();
+      var perBox = parseFloat(values[i][1]) || DEFAULT_PACKING_RATIO_SERVER;
+      if (name) result.push({ name: name, perBox: perBox });
+    }
+    return result;
+  } catch (e) {
+    Logger.log('getProductData Error: ' + e.message);
+    return [];
+  }
+}
+
+// Adds a party the user has confirmed is new to the WMS_Firms master
+// sheet (the same sheet getFirmData() reads from). Silently no-ops if the
+// name is already present (case-insensitive) so a retry can't duplicate it.
+function addNewFirmToMaster(name, gst) {
+  name = (name || '').toString().trim().toUpperCase();
+  gst = (gst || '').toString().trim().toUpperCase();
+  if (!name) return { success: false, message: 'Firm name required.' };
+
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var externalSS = SpreadsheetApp.openByUrl(FIRM_SHEET_URL);
+    var sheet = externalSS.getSheetByName(FIRM_SHEET_NAME) || externalSS.getSheets()[0];
+    var lastRow = sheet.getLastRow();
+
+    if (lastRow >= 2) {
+      var existing = sheet.getRange(2, FIRM_COLUMN, lastRow - 1, 1).getValues();
+      for (var i = 0; i < existing.length; i++) {
+        if ((existing[i][0] || '').toString().trim().toUpperCase() === name) {
+          return { success: true, alreadyExists: true };
+        }
+      }
+    }
+
+    var numCols = Math.max(FIRM_COLUMN, GST_COLUMN);
+    var newRow = new Array(numCols).fill('');
+    newRow[FIRM_COLUMN - 1] = name;
+    newRow[GST_COLUMN - 1] = gst;
+    sheet.appendRow(newRow);
+    return { success: true };
+  } catch (e) {
+    Logger.log('addNewFirmToMaster Error: ' + e.message);
+    return { success: false, message: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Adds a product the user has confirmed is new to the WMS_Products master
+// sheet. Silently no-ops if the name is already present (case-insensitive).
+function addNewProductToMaster(name, perBox) {
+  name = (name || '').toString().trim();
+  perBox = parseFloat(perBox) || DEFAULT_PACKING_RATIO_SERVER;
+  if (!name) return { success: false, message: 'Product name required.' };
+
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var sheet = getProductSheet_();
+    var lastRow = sheet.getLastRow();
+    var nameUpper = name.toUpperCase();
+
+    if (lastRow >= 2) {
+      var existing = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (var i = 0; i < existing.length; i++) {
+        if ((existing[i][0] || '').toString().trim().toUpperCase() === nameUpper) {
+          return { success: true, alreadyExists: true };
+        }
+      }
+    }
+
+    sheet.appendRow([name, perBox]);
+    return { success: true };
+  } catch (e) {
+    Logger.log('addNewProductToMaster Error: ' + e.message);
+    return { success: false, message: e.message };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function getSalesPersons() {
