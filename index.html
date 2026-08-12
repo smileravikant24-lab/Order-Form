@@ -391,6 +391,7 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
   </div>
 </div>
 <div id="dlModal"></div>
+<div id="customDialog"></div>
 </div>
 
 <script>
@@ -434,7 +435,7 @@ function findPackingRatio(pName){
 }
 function syncQty(el,type){
   var row=el.closest('.pr'),pName=row.querySelector('.p-name').value,reamInp=row.querySelector('.q-ream'),boxInp=row.querySelector('.q-box'),perBox=findPackingRatio(pName)||DEFAULT_PACKING_RATIO;
-  if(!pName&&el.value!==''){alert('Pehle Product select karein!');el.value='';return;}
+  if(!pName&&el.value!==''){showCustomAlert('Product Zaroori Hai','Pehle Product select karein!');el.value='';return;}
   if(type==='ream'){var rVal=parseInt(reamInp.value);if(rVal>0&&perBox){boxInp.value=(rVal/perBox).toFixed(2);boxInp.readOnly=true;boxInp.classList.add('disabled-bg');}else if(!reamInp.value){resetRowFields(reamInp,boxInp);}}
   else if(type==='box'){var bVal=parseFloat(boxInp.value);if(bVal>0&&perBox){reamInp.value=Math.round(bVal*perBox);reamInp.readOnly=true;reamInp.classList.add('disabled-bg');}else if(!boxInp.value){resetRowFields(reamInp,boxInp);}}
   ct();
@@ -562,6 +563,64 @@ function lw(){
 }
 
 function escHtml(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+function openDialog(cfg){
+  return new Promise(function(resolve){
+    var host=document.getElementById('customDialog');
+    var isPrompt=cfg.type==='prompt';
+    var isConfirm=cfg.type==='confirm';
+    var okText=cfg.okText||'OK';
+    var cancelText=cfg.cancelText||'Cancel';
+    host.innerHTML='<div class="modal-overlay"><div class="modal-box">'
+      +'<div class="modal-icon">'+(cfg.icon||'&#128172;')+'</div>'
+      +'<div class="modal-title">'+escHtml(cfg.title||'')+'</div>'
+      +'<div class="modal-msg" style="text-align:left">'+(cfg.message||'')+'</div>'
+      +(isPrompt?'<input class="inp" id="cdInput" type="'+(cfg.inputType||'text')+'" placeholder="'+escHtml(cfg.placeholder||'')+'" style="margin-bottom:20px" value="'+escHtml(cfg.defaultValue||'')+'">':'')
+      +'<div class="modal-actions">'
+      +((isConfirm||isPrompt)?'<button type="button" class="modal-btn secondary" id="cdCancel">'+cancelText+'</button>':'')
+      +'<button type="button" class="modal-btn primary" id="cdOk">'+okText+'</button>'
+      +'</div></div></div>';
+
+    var overlay=host.querySelector('.modal-overlay');
+    var okBtn=host.querySelector('#cdOk');
+    var cancelBtn=host.querySelector('#cdCancel');
+    var inputEl=host.querySelector('#cdInput');
+
+    function close(result){
+      host.innerHTML='';
+      resolve(result);
+    }
+    okBtn.onclick=function(){
+      if(isPrompt){close((inputEl.value||'').trim());}
+      else if(isConfirm){close(true);}
+      else{close(true);}
+    };
+    if(cancelBtn){
+      cancelBtn.onclick=function(){close(isPrompt?null:false);};
+    }
+    overlay.onclick=function(e){
+      if(e.target===overlay){
+        if(isPrompt)close(null);
+        else if(isConfirm)close(false);
+      }
+    };
+    if(inputEl){
+      inputEl.focus();
+      inputEl.addEventListener('keydown',function(e){
+        if(e.key==='Enter'){e.preventDefault();okBtn.click();}
+      });
+    }
+  });
+}
+function showCustomAlert(title,message){
+  return openDialog({type:'alert',title:title,message:message,icon:'&#9888;&#65039;'});
+}
+function showCustomConfirm(title,message,okText,cancelText){
+  return openDialog({type:'confirm',title:title,message:message,icon:'&#10067;',okText:okText,cancelText:cancelText});
+}
+function showCustomPrompt(title,message,inputType,defaultValue){
+  return openDialog({type:'prompt',title:title,message:message,icon:'&#9998;&#65039;',inputType:inputType||'text',defaultValue:defaultValue||''});
+}
 function hideFirmDD(){
   setTimeout(function(){
     var dd=document.getElementById('firmDD');
@@ -592,13 +651,15 @@ function onFirmInput(val){
   dd.innerHTML=html;
   dd.classList.add('show');
 }
-function addNewFirmFromDropdown(name){
+async function addNewFirmFromDropdown(name){
   var gstField=document.getElementById('gstNo');
   var gst=gstField.value.trim();
   if(!gst){
-    gst=(prompt('GST No. daalein "'+name+'" ke liye (khaali chhod sakte hain agar nahi hai):')||'').trim();
+    var enteredGst=await showCustomPrompt('GST Number','"'+escHtml(name)+'" ke liye GST No. daalein (khaali chhod sakte hain agar nahi hai):');
+    if(enteredGst===null)return;
+    gst=enteredGst.trim();
   }
-  if(!confirmAndRegisterNewFirm(name,gst))return;
+  if(!(await confirmAndRegisterNewFirm(name,gst)))return;
   document.getElementById('firmName').value=name;
   gstField.value=gst.toUpperCase();
   hideFirmDD();
@@ -626,8 +687,8 @@ function showProductDD(el){
   dd.innerHTML=html;
   dd.classList.add('show');
 }
-function addNewProductFromDropdown(itemEl,name){
-  if(!confirmAndRegisterNewProduct(name))return;
+async function addNewProductFromDropdown(itemEl,name){
+  if(!(await confirmAndRegisterNewProduct(name)))return;
   var wrap=itemEl.closest('.fld');
   var inp=wrap.querySelector('.p-name');
   var dd=wrap.querySelector('.firm-dd');
@@ -690,7 +751,7 @@ function gfn(){
 
 var MODIFY_PIN_VERIFIED=false;
 
-function searchOrderToModify(){
+async function searchOrderToModify(){
   var piNo=(document.getElementById('modPiInput').value||'').trim();
   var statusEl=document.getElementById('modStatus');
   if(!piNo){
@@ -699,7 +760,7 @@ function searchOrderToModify(){
     return;
   }
   if(!MODIFY_PIN_VERIFIED){
-    var pin=prompt('Order modify karne ke liye PIN daalein:');
+    var pin=await showCustomPrompt('PIN Required','Order modify karne ke liye PIN daalein:','password');
     if(pin===null)return;
     statusEl.style.color='var(--c-muted)';
     statusEl.innerHTML='PIN verify ho raha hai...';
@@ -906,7 +967,7 @@ function onProdChange(el){
 
 function dr(btn){
   var rows=document.getElementById('ic').querySelectorAll('.pr');
-  if(rows.length<=1){alert('Kam se kam ek item zaroori hai!');return;}
+  if(rows.length<=1){showCustomAlert('Item Zaroori Hai','Kam se kam ek item zaroori hai!');return;}
   btn.closest('.pr').remove();
   ct();
 }
@@ -1032,12 +1093,12 @@ function isKnownFirm(name){
   var firms=window._firmData||[];
   return firms.some(function(f){return (f.name||'').trim().toUpperCase()===upper;});
 }
-function confirmAndRegisterNewFirm(name,gst){
+async function confirmAndRegisterNewFirm(name,gst){
   var trimmedName=(name||'').trim();
   if(!trimmedName||isKnownFirm(trimmedName))return true;
-  var ok1=confirm('"'+trimmedName+'" party master list me nahi mili.\n\nGST No: '+(gst||'(khaali)')+'\n\nKya yeh ek NAYI party hai?');
+  var ok1=await showCustomConfirm('Nayi Party?','"'+escHtml(trimmedName)+'" party master list me nahi mili.<br><br><strong>GST No:</strong> '+escHtml(gst||'(khaali)')+'<br><br>Kya yeh ek NAYI party hai?','Haan, Nayi Party Hai','Cancel');
   if(!ok1)return false;
-  var ok2=confirm('Double-check karein:\n\nParty Name: '+trimmedName+'\nGST No: '+(gst||'(khaali)')+'\n\nYeh sahi hai? Confirm karne par master list me permanently add ho jayegi.');
+  var ok2=await showCustomConfirm('Double-Check Karein','<strong>Party Name:</strong> '+escHtml(trimmedName)+'<br><strong>GST No:</strong> '+escHtml(gst||'(khaali)')+'<br><br>Yeh sahi hai? Confirm karne par master list me permanently add ho jayegi.','Haan, Sahi Hai','Cancel');
   if(!ok2)return false;
   window._firmData=window._firmData||[];
   window._firmData.push({name:trimmedName.toUpperCase(),gst:(gst||'').toUpperCase()});
@@ -1049,12 +1110,12 @@ function isKnownProduct(name){
   if(!upper)return true;
   return IT.some(function(n){return n.toUpperCase()===upper;});
 }
-function confirmAndRegisterNewProduct(name){
+async function confirmAndRegisterNewProduct(name){
   var trimmedName=(name||'').trim();
   if(!trimmedName||isKnownProduct(trimmedName))return true;
-  var ok1=confirm('"'+trimmedName+'" product list me nahi mila.\n\nKya yeh ek NAYA product hai?');
+  var ok1=await showCustomConfirm('Naya Product?','"'+escHtml(trimmedName)+'" product list me nahi mila.<br><br>Kya yeh ek NAYA product hai?','Haan, Naya Product Hai','Cancel');
   if(!ok1)return false;
-  var ok2=confirm('Double-check karein:\n\nProduct Name: '+trimmedName+'\n\nYeh sahi hai? Confirm karne par master list me permanently add ho jayega.');
+  var ok2=await showCustomConfirm('Double-Check Karein','<strong>Product Name:</strong> '+escHtml(trimmedName)+'<br><br>Yeh sahi hai? Confirm karne par master list me permanently add ho jayega.','Haan, Sahi Hai','Cancel');
   if(!ok2)return false;
   IT.push(trimmedName);
   packingMap[trimmedName]=DEFAULT_PACKING_RATIO;
@@ -1062,7 +1123,7 @@ function confirmAndRegisterNewProduct(name){
   return true;
 }
 
-function sub(e){
+async function sub(e){
   e.preventDefault();
   var sMsg=document.getElementById('sMsg');
   var items=[];
@@ -1110,7 +1171,7 @@ function sub(e){
 
   var firmNameVal=tp(document.getElementById('firmName').value);
   var gstVal=document.getElementById('gstNo').value.trim();
-  if(!confirmAndRegisterNewFirm(firmNameVal,gstVal)){
+  if(!(await confirmAndRegisterNewFirm(firmNameVal,gstVal))){
     sMsg.className='sm er';
     sMsg.textContent='Party confirm nahi hui — submission cancel ho gaya.';
     sMsg.classList.remove('hd');
@@ -1120,7 +1181,7 @@ function sub(e){
   var uniqueProductNames=[];
   items.forEach(function(it){if(uniqueProductNames.indexOf(it.name)===-1)uniqueProductNames.push(it.name);});
   for(var pni=0;pni<uniqueProductNames.length;pni++){
-    if(!confirmAndRegisterNewProduct(uniqueProductNames[pni])){
+    if(!(await confirmAndRegisterNewProduct(uniqueProductNames[pni]))){
       sMsg.className='sm er';
       sMsg.textContent='Product confirm nahi hua — submission cancel ho gaya.';
       sMsg.classList.remove('hd');
@@ -1375,7 +1436,7 @@ function doSubmit(d,btn,sTxt,sSpn){
         document.getElementById('modStatus').textContent='';
         gfn();
       }else{
-        alert(res.message||'Error! Dobara try karein.');
+        showCustomAlert('Error','&#9888;&#65039; '+escHtml(res.message||'Error! Dobara try karein.'));
       }
     })
     .catch(function(err){
@@ -1383,7 +1444,7 @@ function doSubmit(d,btn,sTxt,sSpn){
       btn.disabled=false;
       sTxt.textContent='✓ Confirm & Submit';
       sSpn.classList.add('hd');
-      alert('Server error: '+err.message);
+      showCustomAlert('Server Error','&#9888;&#65039; '+escHtml(err.message));
     });
   }
 
@@ -1416,7 +1477,7 @@ function showModal(fno,ftype,driveUrl,isUpdate){
 }
 
 function pdf(){
-  if(!_d){alert('Pehle form submit karein!');return;}
+  if(!_d){showCustomAlert('Form Baaki Hai','Pehle form submit karein!');return;}
   try{
     var pdfB64=generatePDFDoc(_d);
     var a=document.createElement('a');
@@ -1425,7 +1486,7 @@ function pdf(){
     var fnoClean=(_d.formNumber||'Receipt').replace(/\//g,'-');
     a.download=fnoClean+'_'+firmClean+'.pdf';
     a.click();
-  }catch(e){alert('PDF error: '+e.message);}
+  }catch(e){showCustomAlert('PDF Error','&#9888;&#65039; '+escHtml(e.message));}
 }
 
 function sr(d,driveUrl){
