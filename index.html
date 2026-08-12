@@ -45,6 +45,8 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
 .firm-dd .fdi:last-child{border-bottom:none}
 .firm-dd .fdi:hover,.firm-dd .fdi.active{background:var(--c-surface-alt)}
 .firm-dd .fdi-empty{padding:10px 14px;font-size:13px;color:var(--c-muted);cursor:default}
+.firm-dd .fdi-add{padding:10px 14px;font-size:13px;font-weight:600;color:var(--c-primary-dark);background:var(--c-surface-alt);cursor:pointer;border-top:1.5px dashed var(--c-primary)}
+.firm-dd .fdi-add:hover{background:#e4efdd}
 .inp-mono{font-family:'JetBrains Mono',monospace;font-weight:700;text-align:right;background:var(--c-surface-alt)}
 .inp-readonly{background:var(--c-surface-alt)!important;color:var(--c-muted)!important;cursor:default}
 .ph,.pr{display:grid;gap:10px;align-items:end}
@@ -423,8 +425,15 @@ const packingMap={"DOUBLE A A4 70 GSM":5,"DOUBLE A A4 75 GSM":5,"DOUBLE A A4 80 
 const DOUBLE_A_DISCOUNT_PRODUCTS=["DOUBLE A A4 70 GSM","DOUBLE A A4 75 GSM","DOUBLE A A4 80 GSM"];
 const DEFAULT_PACKING_RATIO=5;
 
+function findPackingRatio(pName){
+  if(!pName)return null;
+  if(packingMap.hasOwnProperty(pName))return packingMap[pName];
+  var upper=pName.trim().toUpperCase();
+  for(var key in packingMap){if(key.toUpperCase()===upper)return packingMap[key];}
+  return null;
+}
 function syncQty(el,type){
-  var row=el.closest('.pr'),pName=row.querySelector('.p-name').value,reamInp=row.querySelector('.q-ream'),boxInp=row.querySelector('.q-box'),perBox=packingMap[pName]||DEFAULT_PACKING_RATIO;
+  var row=el.closest('.pr'),pName=row.querySelector('.p-name').value,reamInp=row.querySelector('.q-ream'),boxInp=row.querySelector('.q-box'),perBox=findPackingRatio(pName)||DEFAULT_PACKING_RATIO;
   if(!pName&&el.value!==''){alert('Pehle Product select karein!');el.value='';return;}
   if(type==='ream'){var rVal=parseInt(reamInp.value);if(rVal>0&&perBox){boxInp.value=(rVal/perBox).toFixed(2);boxInp.readOnly=true;boxInp.classList.add('disabled-bg');}else if(!reamInp.value){resetRowFields(reamInp,boxInp);}}
   else if(type==='box'){var bVal=parseFloat(boxInp.value);if(bVal>0&&perBox){reamInp.value=Math.round(bVal*perBox);reamInp.readOnly=true;reamInp.classList.add('disabled-bg');}else if(!boxInp.value){resetRowFields(reamInp,boxInp);}}
@@ -537,6 +546,17 @@ function lw(){
           s.innerHTML += '<option value="'+x+'">'+x+'</option>';
         });
       });
+
+      window._productData = data.products || [];
+      (data.products || []).forEach(function(p){
+        if(!p||!p.name)return;
+        var name=p.name.toString().trim();
+        if(!name)return;
+        var upper=name.toUpperCase();
+        var known=IT.some(function(n){return n.toUpperCase()===upper;});
+        if(!known)IT.push(name);
+        packingMap[name]=parseFloat(p.perBox)||DEFAULT_PACKING_RATIO;
+      });
     })
     .catch(function(err) { console.error('Data load error:', err); });
 }
@@ -561,12 +581,32 @@ function onFirmInput(val){
   var q=(val||'').trim().toLowerCase();
   var matches=q?firms.filter(function(f){return f.name.toLowerCase().indexOf(q)!==-1;}):firms;
   matches=matches.slice(0,50);
-  if(!matches.length){
-    dd.innerHTML='<div class="fdi-empty">No matching firm</div>';
-  }else{
-    dd.innerHTML=matches.map(function(f){return '<div class="fdi" onmousedown="selectFirm(\''+escHtml(f.name).replace(/'/g,"\\'")+'\')">'+escHtml(f.name)+'</div>';}).join('');
+  var html=matches.length
+    ? matches.map(function(f){return '<div class="fdi" onmousedown="selectFirm(\''+escHtml(f.name).replace(/'/g,"\\'")+'\')">'+escHtml(f.name)+'</div>';}).join('')
+    : (q?'<div class="fdi-empty">No matching firm</div>':'');
+  var trimmedVal=(val||'').trim();
+  var exactKnown=trimmedVal&&firms.some(function(f){return f.name.trim().toUpperCase()===trimmedVal.toUpperCase();});
+  if(trimmedVal&&!exactKnown){
+    html+='<div class="fdi fdi-add" onmousedown="addNewFirmFromDropdown(\''+escHtml(trimmedVal).replace(/'/g,"\\'")+'\')">&#10133; "'+escHtml(trimmedVal)+'" ko <strong>naye party</strong> ke roop me add karein</div>';
   }
+  dd.innerHTML=html;
   dd.classList.add('show');
+}
+function addNewFirmFromDropdown(name){
+  var gstField=document.getElementById('gstNo');
+  var gst=gstField.value.trim();
+  if(!gst){
+    gst=(prompt('GST No. daalein "'+name+'" ke liye (khaali chhod sakte hain agar nahi hai):')||'').trim();
+  }
+  if(!confirmAndRegisterNewFirm(name,gst))return;
+  document.getElementById('firmName').value=name;
+  gstField.value=gst.toUpperCase();
+  hideFirmDD();
+  var badgeWrap=document.getElementById('gstBadgeWrap');
+  if(gst){
+    document.getElementById('gstBadgeVal').textContent=gst.toUpperCase();
+    badgeWrap.style.display='block';
+  }
 }
 function showProductDD(el){
   var dd=el.parentElement.querySelector('.firm-dd');
@@ -575,12 +615,25 @@ function showProductDD(el){
   var names=(typeof IT!=='undefined'?IT:Object.keys(packingMap));
   var matches=q?names.filter(function(n){return n.toLowerCase().indexOf(q)!==-1;}):names;
   matches=matches.slice(0,50);
-  if(!matches.length){
-    dd.innerHTML='<div class="fdi-empty">No matching product</div>';
-  }else{
-    dd.innerHTML=matches.map(function(n){return '<div class="fdi" onmousedown="selectProduct(this,\''+escHtml(n).replace(/'/g,"\\'")+'\')">'+escHtml(n)+'</div>';}).join('');
+  var html=matches.length
+    ? matches.map(function(n){return '<div class="fdi" onmousedown="selectProduct(this,\''+escHtml(n).replace(/'/g,"\\'")+'\')">'+escHtml(n)+'</div>';}).join('')
+    : (q?'<div class="fdi-empty">No matching product</div>':'');
+  var trimmedVal=(el.value||'').trim();
+  var exactKnown=trimmedVal&&names.some(function(n){return n.toUpperCase()===trimmedVal.toUpperCase();});
+  if(trimmedVal&&!exactKnown){
+    html+='<div class="fdi fdi-add" onmousedown="addNewProductFromDropdown(this,\''+escHtml(trimmedVal).replace(/'/g,"\\'")+'\')">&#10133; "'+escHtml(trimmedVal)+'" ko <strong>naye product</strong> ke roop me add karein</div>';
   }
+  dd.innerHTML=html;
   dd.classList.add('show');
+}
+function addNewProductFromDropdown(itemEl,name){
+  if(!confirmAndRegisterNewProduct(name))return;
+  var wrap=itemEl.closest('.fld');
+  var inp=wrap.querySelector('.p-name');
+  var dd=wrap.querySelector('.firm-dd');
+  inp.value=name;
+  dd.classList.remove('show');
+  onProdChange(inp);
 }
 function onProductInput(el){
   showProductDD(el);
@@ -646,7 +699,7 @@ function searchOrderToModify(){
     return;
   }
   if(!MODIFY_PIN_VERIFIED){
-    var pin=prompt('Enter PIN for Order modify');
+    var pin=prompt('Order modify karne ke liye PIN daalein:');
     if(pin===null)return;
     statusEl.style.color='var(--c-muted)';
     statusEl.innerHTML='PIN verify ho raha hai...';
@@ -973,6 +1026,42 @@ function cleanFirmName(name){
     .substring(0,30);
 }
 
+function isKnownFirm(name){
+  var upper=(name||'').trim().toUpperCase();
+  if(!upper)return true;
+  var firms=window._firmData||[];
+  return firms.some(function(f){return (f.name||'').trim().toUpperCase()===upper;});
+}
+function confirmAndRegisterNewFirm(name,gst){
+  var trimmedName=(name||'').trim();
+  if(!trimmedName||isKnownFirm(trimmedName))return true;
+  var ok1=confirm('"'+trimmedName+'" party master list me nahi mili.\n\nGST No: '+(gst||'(khaali)')+'\n\nKya yeh ek NAYI party hai?');
+  if(!ok1)return false;
+  var ok2=confirm('Double-check karein:\n\nParty Name: '+trimmedName+'\nGST No: '+(gst||'(khaali)')+'\n\nYeh sahi hai? Confirm karne par master list me permanently add ho jayegi.');
+  if(!ok2)return false;
+  window._firmData=window._firmData||[];
+  window._firmData.push({name:trimmedName.toUpperCase(),gst:(gst||'').toUpperCase()});
+  fetch(WEB_APP_URL+'?action=addNewFirm&name='+encodeURIComponent(trimmedName)+'&gst='+encodeURIComponent(gst||'')).catch(function(){});
+  return true;
+}
+function isKnownProduct(name){
+  var upper=(name||'').trim().toUpperCase();
+  if(!upper)return true;
+  return IT.some(function(n){return n.toUpperCase()===upper;});
+}
+function confirmAndRegisterNewProduct(name){
+  var trimmedName=(name||'').trim();
+  if(!trimmedName||isKnownProduct(trimmedName))return true;
+  var ok1=confirm('"'+trimmedName+'" product list me nahi mila.\n\nKya yeh ek NAYA product hai?');
+  if(!ok1)return false;
+  var ok2=confirm('Double-check karein:\n\nProduct Name: '+trimmedName+'\n\nYeh sahi hai? Confirm karne par master list me permanently add ho jayega.');
+  if(!ok2)return false;
+  IT.push(trimmedName);
+  packingMap[trimmedName]=DEFAULT_PACKING_RATIO;
+  fetch(WEB_APP_URL+'?action=addNewProduct&name='+encodeURIComponent(trimmedName)+'&perBox='+DEFAULT_PACKING_RATIO).catch(function(){});
+  return true;
+}
+
 function sub(e){
   e.preventDefault();
   var sMsg=document.getElementById('sMsg');
@@ -1019,6 +1108,26 @@ function sub(e){
     return;
   }
 
+  var firmNameVal=tp(document.getElementById('firmName').value);
+  var gstVal=document.getElementById('gstNo').value.trim();
+  if(!confirmAndRegisterNewFirm(firmNameVal,gstVal)){
+    sMsg.className='sm er';
+    sMsg.textContent='Party confirm nahi hui — submission cancel ho gaya.';
+    sMsg.classList.remove('hd');
+    return;
+  }
+
+  var uniqueProductNames=[];
+  items.forEach(function(it){if(uniqueProductNames.indexOf(it.name)===-1)uniqueProductNames.push(it.name);});
+  for(var pni=0;pni<uniqueProductNames.length;pni++){
+    if(!confirmAndRegisterNewProduct(uniqueProductNames[pni])){
+      sMsg.className='sm er';
+      sMsg.textContent='Product confirm nahi hua — submission cancel ho gaya.';
+      sMsg.classList.remove('hd');
+      return;
+    }
+  }
+
   sMsg.classList.add('hd');
 
   var d={
@@ -1026,8 +1135,8 @@ function sub(e){
     formNumber:FN,
     isUpdate:IS_UPDATE_MODE,
     originalTimestamp:MODIFY_ORIG_TIMESTAMP,
-    firmName:tp(document.getElementById('firmName').value),
-    gstNo:document.getElementById('gstNo').value.trim(),
+    firmName:firmNameVal,
+    gstNo:gstVal,
     areaName:tp(document.getElementById('areaName').value),
     customerName:document.getElementById('custName').value.trim(),
     whatsapp:document.getElementById('wap').value.trim(),
