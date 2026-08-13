@@ -207,8 +207,15 @@ function getCurrentFY() {
   return String(startYear).slice(-2) + '-' + String(startYear + 1).slice(-2);
 }
 
+var FIRM_CACHE_KEY = 'FIRM_DATA_CACHE_V1';
+var FIRM_CACHE_SECONDS = 300; // 5 min
+
 function getFirmData() {
   try {
+    var cache = CacheService.getScriptCache();
+    var cached = cache.get(FIRM_CACHE_KEY);
+    if (cached) return JSON.parse(cached);
+
     var externalSS = SpreadsheetApp.openByUrl(FIRM_SHEET_URL);
     var sheet = externalSS.getSheetByName(FIRM_SHEET_NAME) || externalSS.getSheets()[0];
     var lastRow = sheet.getLastRow();
@@ -221,6 +228,7 @@ function getFirmData() {
       var gstNo    = (values[i][GST_COLUMN - 1]  || '').toString().trim().toUpperCase();
       if (firmName) result.push({ name: firmName, gst: gstNo });
     }
+    try { cache.put(FIRM_CACHE_KEY, JSON.stringify(result), FIRM_CACHE_SECONDS); } catch (cacheErr) { Logger.log('Firm cache put error: ' + cacheErr.message); }
     return result;
   } catch (e) {
     Logger.log('getFirmData Error: ' + e.message);
@@ -260,8 +268,15 @@ function getProductSheet_() {
   return sheet;
 }
 
+var PRODUCT_CACHE_KEY = 'PRODUCT_DATA_CACHE_V1';
+var PRODUCT_CACHE_SECONDS = 300; // 5 min
+
 function getProductData() {
   try {
+    var cache = CacheService.getScriptCache();
+    var cached = cache.get(PRODUCT_CACHE_KEY);
+    if (cached) return JSON.parse(cached);
+
     var sheet = getProductSheet_();
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return [];
@@ -272,6 +287,7 @@ function getProductData() {
       var perBox = parseFloat(values[i][1]) || DEFAULT_PACKING_RATIO_SERVER;
       if (name) result.push({ name: name, perBox: perBox });
     }
+    try { cache.put(PRODUCT_CACHE_KEY, JSON.stringify(result), PRODUCT_CACHE_SECONDS); } catch (cacheErr) { Logger.log('Product cache put error: ' + cacheErr.message); }
     return result;
   } catch (e) {
     Logger.log('getProductData Error: ' + e.message);
@@ -308,6 +324,7 @@ function addNewFirmToMaster(name, gst) {
     newRow[FIRM_COLUMN - 1] = name;
     newRow[GST_COLUMN - 1] = gst;
     sheet.appendRow(newRow);
+    try { CacheService.getScriptCache().remove(FIRM_CACHE_KEY); } catch (cacheErr) {}
     return { success: true };
   } catch (e) {
     Logger.log('addNewFirmToMaster Error: ' + e.message);
@@ -341,6 +358,7 @@ function addNewProductToMaster(name, perBox) {
     }
 
     sheet.appendRow([name, perBox]);
+    try { CacheService.getScriptCache().remove(PRODUCT_CACHE_KEY); } catch (cacheErr) {}
     return { success: true };
   } catch (e) {
     Logger.log('addNewProductToMaster Error: ' + e.message);

@@ -554,7 +554,7 @@ function sw(type){
 
 function fetchJsonRetry(url,options,attempts,delayMs){
   attempts=attempts||3;
-  delayMs=delayMs||700;
+  delayMs=delayMs||500;
   return fetch(url,options).then(function(response){
     if(!response.ok)throw new Error('HTTP '+response.status);
     return response.json();
@@ -565,26 +565,45 @@ function fetchJsonRetry(url,options,attempts,delayMs){
   });
 }
 
+var INITIAL_DATA_CACHE_KEY='spInitialDataCache_v1';
+
+function applyInitialData(data){
+  window._firmData = data.firms || [];
+  window._firmDataLoaded = true;
+  var existingFirm = document.getElementById('firmName').value;
+  if(existingFirm) autoFillGST(existingFirm);
+
+  populateSalesPersons((data.salesPersons&&data.salesPersons.length)?data.salesPersons:FALLBACK_SALES_PERSONS);
+
+  window._productData = data.products || [];
+  (data.products || []).forEach(function(p){
+    if(!p||!p.name)return;
+    var name=p.name.toString().trim();
+    if(!name)return;
+    var upper=name.toUpperCase();
+    var known=IT.some(function(n){return n.toUpperCase()===upper;});
+    if(!known)IT.push(name);
+    packingMap[name]=parseFloat(p.perBox)||DEFAULT_PACKING_RATIO;
+  });
+}
+
+function loadCachedInitialData(){
+  try{
+    var raw=localStorage.getItem(INITIAL_DATA_CACHE_KEY);
+    if(!raw)return false;
+    var cached=JSON.parse(raw);
+    if(!cached||!cached.data)return false;
+    applyInitialData(cached.data);
+    return true;
+  }catch(e){return false;}
+}
+
 function lw(){
-  fetchJsonRetry(WEB_APP_URL + '?action=getInitialData')
+  var hadCache=loadCachedInitialData();
+  fetchJsonRetry(WEB_APP_URL + '?action=getInitialData',null,hadCache?2:3,400)
     .then(function(data) {
-      window._firmData = data.firms || [];
-      window._firmDataLoaded = true;
-      var existingFirm = document.getElementById('firmName').value;
-      if(existingFirm) autoFillGST(existingFirm);
-
-      populateSalesPersons((data.salesPersons&&data.salesPersons.length)?data.salesPersons:FALLBACK_SALES_PERSONS);
-
-      window._productData = data.products || [];
-      (data.products || []).forEach(function(p){
-        if(!p||!p.name)return;
-        var name=p.name.toString().trim();
-        if(!name)return;
-        var upper=name.toUpperCase();
-        var known=IT.some(function(n){return n.toUpperCase()===upper;});
-        if(!known)IT.push(name);
-        packingMap[name]=parseFloat(p.perBox)||DEFAULT_PACKING_RATIO;
-      });
+      applyInitialData(data);
+      try{localStorage.setItem(INITIAL_DATA_CACHE_KEY,JSON.stringify({data:data,ts:Date.now()}));}catch(e){}
     })
     .catch(function(err) { console.error('Data load error:', err); });
 }
