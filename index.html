@@ -531,9 +531,21 @@ function sw(type){
   gfn();
 }
 
+function fetchJsonRetry(url,options,attempts,delayMs){
+  attempts=attempts||3;
+  delayMs=delayMs||700;
+  return fetch(url,options).then(function(response){
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    return response.json();
+  }).catch(function(err){
+    if(attempts<=1)throw err;
+    return new Promise(function(resolve){setTimeout(resolve,delayMs);})
+      .then(function(){return fetchJsonRetry(url,options,attempts-1,delayMs);});
+  });
+}
+
 function lw(){
-  fetch(WEB_APP_URL + '?action=getInitialData')
-    .then(function(response) { return response.json(); })
+  fetchJsonRetry(WEB_APP_URL + '?action=getInitialData')
     .then(function(data) {
       window._firmData = data.firms || [];
       var existingFirm = document.getElementById('firmName').value;
@@ -733,8 +745,7 @@ function autoFillGST(firmName){
 
 function gfn(){
   if(IS_UPDATE_MODE)return;
-  fetch(WEB_APP_URL + '?action=getFormNumber&formType=' + CT)
-    .then(function(response) { return response.json(); })
+  fetchJsonRetry(WEB_APP_URL + '?action=getFormNumber&formType=' + CT)
     .then(function(data) {
       if (data.formNumber) {
         FN = data.formNumber;
@@ -764,8 +775,7 @@ async function searchOrderToModify(){
     if(pin===null)return;
     statusEl.style.color='var(--c-muted)';
     statusEl.innerHTML='PIN verify ho raha hai...';
-    fetch(WEB_APP_URL + '?action=verifyModifyPin&pin=' + encodeURIComponent(pin))
-      .then(function(response){ return response.json(); })
+    fetchJsonRetry(WEB_APP_URL + '?action=verifyModifyPin&pin=' + encodeURIComponent(pin))
       .then(function(res){
         if(res.valid){
           MODIFY_PIN_VERIFIED=true;
@@ -789,8 +799,7 @@ function doSearchOrderToModify(){
   var statusEl=document.getElementById('modStatus');
   statusEl.style.color='var(--c-muted)';
   statusEl.innerHTML='Searching...';
-  fetch(WEB_APP_URL + '?action=getOrderByFormNumber&formNumber=' + encodeURIComponent(piNo))
-    .then(function(response){ return response.json(); })
+  fetchJsonRetry(WEB_APP_URL + '?action=getOrderByFormNumber&formNumber=' + encodeURIComponent(piNo))
     .then(function(res){
       if(res.found){
         populateFormForModify(res.order);
