@@ -47,6 +47,7 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
 .firm-dd .fdi-empty{padding:10px 14px;font-size:13px;color:var(--c-muted);cursor:default}
 .firm-dd .fdi-add{padding:10px 14px;font-size:13px;font-weight:600;color:var(--c-primary-dark);background:var(--c-surface-alt);cursor:pointer;border-top:1.5px dashed var(--c-primary)}
 .firm-dd .fdi-add:hover{background:#e4efdd}
+.fdi-retry{color:var(--c-primary);font-weight:700;text-decoration:underline;cursor:pointer;margin-left:6px}
 .inp-mono{font-family:'JetBrains Mono',monospace;font-weight:700;text-align:right;background:var(--c-surface-alt)}
 .inp-readonly{background:var(--c-surface-alt)!important;color:var(--c-muted)!important;cursor:default}
 .ph,.pr{display:grid;gap:10px;align-items:end}
@@ -457,6 +458,7 @@ var BANK_IMG_P1='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BS
 
 let CT='Order', FN='', _d=null, _submitting=false, IS_UPDATE_MODE=false, MODIFY_ORIG_TIMESTAMP='';
 window._firmData=[];
+window._firmDataLoaded=false;
 
 // Shown immediately on load, independent of the (sometimes flaky,
 // cross-origin) getInitialData fetch — so Sales Person is never empty
@@ -567,6 +569,7 @@ function lw(){
   fetchJsonRetry(WEB_APP_URL + '?action=getInitialData')
     .then(function(data) {
       window._firmData = data.firms || [];
+      window._firmDataLoaded = true;
       var existingFirm = document.getElementById('firmName').value;
       if(existingFirm) autoFillGST(existingFirm);
 
@@ -660,6 +663,11 @@ function selectFirm(name){
 function onFirmInput(val){
   var dd=document.getElementById('firmDD');
   if(!dd)return;
+  if(!window._firmDataLoaded){
+    dd.innerHTML='<div class="fdi-empty">Firm list load ho rahi hai, thoda ruko... <span class="fdi-retry" onmousedown="retryFirmLoad(event)">Retry</span></div>';
+    dd.classList.add('show');
+    return;
+  }
   var firms=window._firmData||[];
   var q=(val||'').trim().toLowerCase();
   var matches=q?firms.filter(function(f){return f.name.toLowerCase().indexOf(q)!==-1;}):firms;
@@ -674,6 +682,12 @@ function onFirmInput(val){
   }
   dd.innerHTML=html;
   dd.classList.add('show');
+}
+function retryFirmLoad(e){
+  if(e)e.stopPropagation();
+  lw();
+  var dd=document.getElementById('firmDD');
+  if(dd)dd.innerHTML='<div class="fdi-empty">Dobara try ho raha hai...</div>';
 }
 async function addNewFirmFromDropdown(name){
   var gstField=document.getElementById('gstNo');
