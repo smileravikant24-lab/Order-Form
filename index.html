@@ -458,11 +458,30 @@ var BANK_IMG_P1='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BS
 let CT='Order', FN='', _d=null, _submitting=false, IS_UPDATE_MODE=false, MODIFY_ORIG_TIMESTAMP='';
 window._firmData=[];
 
+// Shown immediately on load, independent of the (sometimes flaky,
+// cross-origin) getInitialData fetch — so Sales Person is never empty
+// even if the network call to the backend fails or is slow. lw() will
+// still refresh this from the server list once it loads successfully.
+const FALLBACK_SALES_PERSONS=['MR. PAWAN NEGI','MR. PRANAV SATIJA','MR. MUKESH SHUKLA','MR. RISHABH JAIN','MR. SONU CHAUHAN'];
+function populateSalesPersons(list){
+  ['sp1','sp2'].forEach(function(id){
+    var s=document.getElementById(id);
+    if(!s)return;
+    var prevVal=s.value;
+    s.innerHTML='<option value="">&#8212; Select &#8212;</option>';
+    (list||[]).forEach(function(x){
+      s.innerHTML+='<option value="'+x+'">'+x+'</option>';
+    });
+    if(prevVal)s.value=prevVal;
+  });
+}
+
 window.addEventListener('DOMContentLoaded',function(){
   var today=new Date().toISOString().split('T')[0];
   document.getElementById('oDate').value=today;
   document.getElementById('oDate').min=today;
   document.getElementById('dDate').min=today;
+  populateSalesPersons(FALLBACK_SALES_PERSONS);
   sw('Order');
   lw();
   ar();
@@ -551,14 +570,7 @@ function lw(){
       var existingFirm = document.getElementById('firmName').value;
       if(existingFirm) autoFillGST(existingFirm);
 
-      ['sp1','sp2'].forEach(function(id){
-        var s = document.getElementById(id);
-        if(!s) return;
-        s.innerHTML = '<option value="">&#8212; Select &#8212;</option>';
-        (data.salesPersons || []).forEach(function(x){
-          s.innerHTML += '<option value="'+x+'">'+x+'</option>';
-        });
-      });
+      populateSalesPersons((data.salesPersons&&data.salesPersons.length)?data.salesPersons:FALLBACK_SALES_PERSONS);
 
       window._productData = data.products || [];
       (data.products || []).forEach(function(p){
