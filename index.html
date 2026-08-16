@@ -237,7 +237,7 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
         <div class="firm-dd" id="firmDD"></div>
         <div id="gstBadgeWrap" style="display:none"><span class="gst-badge">&#128196; GST: <span id="gstBadgeVal"></span></span></div>
       </div>
-      <div class="fld"><label class="lbl">GST No.</label><input class="inp inp-readonly" id="gstNo" placeholder="Auto-filled from firm" readonly></div>
+      <div class="fld"><label class="lbl">GST No.</label><input class="inp inp-readonly" id="gstNo" placeholder="Auto-filled from firm" maxlength="15" style="text-transform:uppercase" readonly></div>
       <div class="fld"><label class="lbl">Area Name <span class="r">*</span></label><input class="inp" id="areaName" placeholder="Enter area name" required></div>
       <div class="fld"><label class="lbl">Customer Name <span class="r">*</span></label><input class="inp" id="custName" placeholder="Enter customer name" required></div>
       <div class="fld"><label class="lbl">WhatsApp Mobile <span class="r">*</span></label><input class="inp" id="wap" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number" required oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
@@ -621,7 +621,7 @@ function openDialog(cfg){
       +'<div class="modal-icon">'+(cfg.icon||'&#128172;')+'</div>'
       +'<div class="modal-title">'+escHtml(cfg.title||'')+'</div>'
       +'<div class="modal-msg" style="text-align:left">'+(cfg.message||'')+'</div>'
-      +(isPrompt?'<input class="inp" id="cdInput" type="'+(cfg.inputType||'text')+'" placeholder="'+escHtml(cfg.placeholder||'')+'" style="margin-bottom:20px" value="'+escHtml(cfg.defaultValue||'')+'">':'')
+      +(isPrompt?'<input class="inp" id="cdInput" type="'+(cfg.inputType||'text')+'" placeholder="'+escHtml(cfg.placeholder||'')+'" style="margin-bottom:20px'+(cfg.uppercase?';text-transform:uppercase':'')+'"'+(cfg.maxLength?' maxlength="'+cfg.maxLength+'"':'')+' value="'+escHtml(cfg.defaultValue||'')+'">':'')
       +'<div class="modal-actions">'
       +((isConfirm||isPrompt)?'<button type="button" class="modal-btn secondary" id="cdCancel">'+cancelText+'</button>':'')
       +'<button type="button" class="modal-btn primary" id="cdOk">'+okText+'</button>'
@@ -652,6 +652,13 @@ function openDialog(cfg){
     };
     if(inputEl){
       inputEl.focus();
+      if(cfg.uppercase){
+        inputEl.addEventListener('input',function(){
+          var pos=inputEl.selectionStart;
+          inputEl.value=inputEl.value.toUpperCase();
+          inputEl.setSelectionRange(pos,pos);
+        });
+      }
       inputEl.addEventListener('keydown',function(e){
         if(e.key==='Enter'){e.preventDefault();okBtn.click();}
       });
@@ -664,8 +671,9 @@ function showCustomAlert(title,message){
 function showCustomConfirm(title,message,okText,cancelText){
   return openDialog({type:'confirm',title:title,message:message,icon:'&#10067;',okText:okText,cancelText:cancelText});
 }
-function showCustomPrompt(title,message,inputType,defaultValue){
-  return openDialog({type:'prompt',title:title,message:message,icon:'&#9998;&#65039;',inputType:inputType||'text',defaultValue:defaultValue||''});
+function showCustomPrompt(title,message,inputType,defaultValue,opts){
+  opts=opts||{};
+  return openDialog({type:'prompt',title:title,message:message,icon:'&#9998;&#65039;',inputType:inputType||'text',defaultValue:defaultValue||'',maxLength:opts.maxLength,uppercase:opts.uppercase});
 }
 function hideFirmDD(){
   setTimeout(function(){
@@ -710,19 +718,27 @@ function retryFirmLoad(e){
 }
 async function addNewFirmFromDropdown(name){
   var gstField=document.getElementById('gstNo');
-  var gst=gstField.value.trim();
+  var gst=(gstField.value||'').trim().toUpperCase();
   if(!gst){
-    var enteredGst=await showCustomPrompt('GST Number','"'+escHtml(name)+'" ke liye GST No. daalein (khaali chhod sakte hain agar nahi hai):');
-    if(enteredGst===null)return;
-    gst=enteredGst.trim();
+    while(true){
+      var enteredGst=await showCustomPrompt('GST Number','"'+escHtml(name)+'" ke liye GST No. daalein (15 character, khaali chhod sakte hain agar nahi hai):','text','',{maxLength:15,uppercase:true});
+      if(enteredGst===null)return;
+      enteredGst=enteredGst.trim().toUpperCase();
+      if(enteredGst&&enteredGst.length!==15){
+        await showCustomAlert('Galat GST No.','GST No. poore <strong>15 character</strong> ka hona chahiye.<br>Aapne '+enteredGst.length+' character diye hain.');
+        continue;
+      }
+      gst=enteredGst;
+      break;
+    }
   }
   if(!(await confirmAndRegisterNewFirm(name,gst)))return;
   document.getElementById('firmName').value=name;
-  gstField.value=gst.toUpperCase();
+  gstField.value=gst;
   hideFirmDD();
   var badgeWrap=document.getElementById('gstBadgeWrap');
   if(gst){
-    document.getElementById('gstBadgeVal').textContent=gst.toUpperCase();
+    document.getElementById('gstBadgeVal').textContent=gst;
     badgeWrap.style.display='block';
   }
 }
