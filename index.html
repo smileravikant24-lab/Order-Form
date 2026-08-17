@@ -481,7 +481,6 @@ function populateSalesPersons(list){
 window.addEventListener('DOMContentLoaded',function(){
   var today=new Date().toISOString().split('T')[0];
   document.getElementById('oDate').value=today;
-  document.getElementById('oDate').min=today;
   document.getElementById('dDate').min=today;
   populateSalesPersons(FALLBACK_SALES_PERSONS);
   sw('Order');
