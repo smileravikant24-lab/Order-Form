@@ -298,54 +298,22 @@ function getProductData() {
   }
 }
 
-// Adds a party the user has confirmed is new to the WMS_Firms master
-// sheet (the same sheet getFirmData() reads from). Silently no-ops if the
-// name is already present (case-insensitive) so a retry can't duplicate it.
+// Saves a newly added party only to the PartyMaster sheet.
+// WMS_Firms is read-only from this app; it is managed separately.
 function addNewFirmToMaster(name, gst) {
   name = (name || '').toString().trim().toUpperCase();
   gst = (gst || '').toString().trim().toUpperCase();
   if (!name) return { success: false, message: 'Firm name required.' };
 
-  var lock = LockService.getScriptLock();
   try {
-    lock.waitLock(10000);
-    var externalSS = SpreadsheetApp.openByUrl(FIRM_SHEET_URL);
-    var sheet = externalSS.getSheetByName(FIRM_SHEET_NAME) || externalSS.getSheets()[0];
-    var lastRow = sheet.getLastRow();
-
-    if (lastRow >= 2) {
-      var existing = sheet.getRange(2, FIRM_COLUMN, lastRow - 1, 1).getValues();
-      for (var i = 0; i < existing.length; i++) {
-        if ((existing[i][0] || '').toString().trim().toUpperCase() === name) {
-          return { success: true, alreadyExists: true };
-        }
-      }
-    }
-
-    var numCols = Math.max(FIRM_COLUMN, GST_COLUMN);
-    var newRow = new Array(numCols).fill('');
-    newRow[FIRM_COLUMN - 1] = name;
-    newRow[GST_COLUMN - 1] = gst;
-    sheet.appendRow(newRow);
-    try { CacheService.getScriptCache().remove(FIRM_CACHE_KEY); } catch (cacheErr) {}
-
-    // Also save to PartyMaster sheet
-    try {
-      var pmSS = SpreadsheetApp.openByUrl(PARTY_MASTER_URL);
-      var pmSheet = pmSS.getSheetByName(PARTY_MASTER_SHEET);
-      if (pmSheet) {
-        pmSheet.appendRow([name, gst, Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')]);
-      }
-    } catch (pmErr) {
-      Logger.log('PartyMaster save error: ' + pmErr.message);
-    }
-
+    var pmSS = SpreadsheetApp.openByUrl(PARTY_MASTER_URL);
+    var pmSheet = pmSS.getSheetByName(PARTY_MASTER_SHEET);
+    if (!pmSheet) return { success: false, message: 'PartyMaster sheet not found.' };
+    pmSheet.appendRow([name, gst, Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')]);
     return { success: true };
   } catch (e) {
     Logger.log('addNewFirmToMaster Error: ' + e.message);
     return { success: false, message: e.message };
-  } finally {
-    lock.releaseLock();
   }
 }
 
