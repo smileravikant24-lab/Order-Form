@@ -402,22 +402,17 @@ const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzjlijGXaELu2FYQZif
 // SALES PERSON → EMAIL MAPPING (client-side only)
 // ══════════════════════════════════════════════════
 const SALES_EMAIL_MAP = {
-  'Mr. Sonu Chauhan'   : 'sonusatijapaper@gmail.com',
-  'Mr. Rishash Jain'   : 'rishabhsatijapaper@gmail.com',
-  'Mr. Pawan Negi'     : 'pawansatijapaper@gmail.com',
-  'Mr. Mukesh Shukla'  : 'mukesh.shukla@satijapaper.com',
-  'Mr. Pranav Satija'  : 'pranavsatija@satijapaper.com'
+  'MR. PAWAN NEGI'    : 'pawansatijapaper@gmail.com',
+  'MR. PRANAV SATIJA' : 'pranavsatija@satijapaper.com',
+  'MR. MUKESH SHUKLA' : 'mukesh.shukla@satijapaper.com',
+  'MR. RISHABH JAIN'  : 'rishabhsatijapaper@gmail.com',
+  'MR. SONU CHAUHAN'  : 'sonusatijapaper@gmail.com'
 };
 
 function getSalesEmail(name) {
   if (!name) return '';
-  var trimmed = name.trim();
-  if (SALES_EMAIL_MAP[trimmed]) return SALES_EMAIL_MAP[trimmed];
-  var lower = trimmed.toLowerCase();
-  for (var k in SALES_EMAIL_MAP) {
-    if (k.toLowerCase() === lower) return SALES_EMAIL_MAP[k];
-  }
-  return '';
+  var key = name.trim().toUpperCase();
+  return SALES_EMAIL_MAP[key] || '';
 }
 
 const IT=["DOUBLE A A4 70 GSM","DOUBLE A A4 75 GSM","DOUBLE A A4 80 GSM","DOUBLE A A4 100 GSM","N R COPIER A4 70 GSM","N R COPIER A4 75 GSM","N R COPIER A4 80 GSM","N R COPIER A3 70 GSM","N R COPIER A3 75 GSM","KHANNA A4 KBOLT (S) 65 GSM","KHANNA A4 EPRINT (S) 70 GSM","KHANNA A4 ECOPY (S) 75 GSM","KHANNA A3 KBOLT (S) 65 GSM","SATIA A4 65 GSM","SATIA A4 70 GSM","SATIA A4 75 GSM","SATIA A3 70 GSM","SATIA FS 70 GSM","ROZAANA A4 70 GSM","I K COPIER A4 70 GSM","P P LITE A4 70 GSM","PAPER ONE A4 75 GSM","PAPER ONE A4 100 GSM","PAPER ONE A3 100 GSM","MAPLE A4 70 GSM","SPECTRA A4 75 GSM","CENTURY STAR A4 75 GSM","J K RED A4 75 GSM","REFLECTION A4 65 GSM","REFLECTION A4 70 GSM","REFLECTION A4 75 GSM","REFLECTION A4 100 GSM","REFLECTION FS 70 GSM","REFLECTION A3 70 GSM","FINEPRINT A4 70 GSM","FINEPRINT A4 75 GSM","Tarang Yellow A4 75 GSM","Tarang Pink A4 75 GSM","Tarang Green A4 75 GSM","Tarang Blue A4 75 GSM","Tarang Ivory A4 75 GSM","ROZAANA A4 75 GSM"];
