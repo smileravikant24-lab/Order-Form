@@ -51,7 +51,9 @@ function doGet(e) {
     var firms = getFirmData();
     var salesPersons = getSalesPersons();
     var products = getProductData();
-    return ContentService.createTextOutput(JSON.stringify({ firms: firms, salesPersons: salesPersons, products: products }))
+    var userEmail = '';
+    try { userEmail = Session.getActiveUser().getEmail() || ''; } catch(ue) {}
+    return ContentService.createTextOutput(JSON.stringify({ firms: firms, salesPersons: salesPersons, products: products, userEmail: userEmail }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 

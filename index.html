@@ -581,6 +581,23 @@ function applyInitialData(data){
     if(!known)IT.push(name);
     packingMap[name]=parseFloat(p.perBox)||DEFAULT_PACKING_RATIO;
   });
+
+  // Auto-fill filler email from Google session (like Google Forms)
+  if(data.userEmail){
+    var fe=document.getElementById('fillerEmail');
+    if(fe&&!fe.value){
+      fe.value=data.userEmail;
+      fe.readOnly=true;
+      fe.classList.add('inp-readonly');
+      var wrap=fe.closest('.fld');
+      if(wrap){
+        var badge=document.createElement('div');
+        badge.style.cssText='display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11.5px;font-weight:600;color:var(--c-primary)';
+        badge.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg> Verified: '+escHtml(data.userEmail);
+        wrap.appendChild(badge);
+      }
+    }
+  }
 }
 
 function loadCachedInitialData(){
