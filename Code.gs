@@ -453,7 +453,7 @@ function processForm(formData) {
 
 var ORDER_DETAIL_HEADERS = [
   'Timestamp', 'Form No', 'Firm Name', 'GST No', 'Area', 'Customer Name',
-  'WhatsApp', 'Sales Person', 'Order Date', 'Delivery Date',
+  'WhatsApp', 'eMail Address', 'Sales Person', 'Order Date', 'Delivery Date',
   'Client Type', 'Payment Terms', 'Payment Days',
   'Transport Mode', 'Transport Name', 'Transporter Number', 'Vehicle Number', 'Driver Number',
   'Product Name', 'Ream Qty', 'Box Qty', 'Original Rate', 'Discount', 'Net Rate', 'Freight (Item)',
@@ -463,7 +463,7 @@ var ORDER_DETAIL_HEADERS = [
 
 var ORDER_SUMMARY_HEADERS = [
   'Timestamp', 'Form No', 'Firm Name', 'GST No', 'Area', 'Customer Name',
-  'WhatsApp', 'Sales Person', 'Order Date', 'Delivery Date',
+  'WhatsApp', 'eMail Address', 'Sales Person', 'Order Date', 'Delivery Date',
   'Client Type', 'Payment Terms', 'Payment Days',
   'Transport Mode', 'Transport Name', 'Transporter Number', 'Vehicle Number', 'Driver Number',
   'Items (Name | Ream | Box | Rate)', 'Total Reams', 'Total Boxes',
@@ -494,6 +494,7 @@ function buildOrderRowsAndSummary(formData, timestamp) {
   var fmGstNo      = toAllCaps(formData.gstNo);
   var fmArea       = toAllCaps(formData.areaName);
   var fmCustomer   = toAllCaps(formData.customerName);
+  var fmEmail      = (formData.email || '').toString().trim().toLowerCase();
   var fmOrderDate  = fmtDate(formData.orderDate);
   var fmDelivDate  = fmtDate(formData.deliveryDate);
   var fmClientType = toAllCaps(formData.clientType || '');
@@ -541,7 +542,7 @@ function buildOrderRowsAndSummary(formData, timestamp) {
       timestamp,
       formData.formNumber || '',
       fmFirmName, fmGstNo, fmArea, fmCustomer,
-      formData.whatsapp || '', fmSalesPerson,
+      formData.whatsapp || '', isFirst ? fmEmail : '', fmSalesPerson,
       fmOrderDate, fmDelivDate, fmClientType,
       fmPaymentTerms, formData.paymentDays || '',
       fmTransportMode, fmTransName,
@@ -563,7 +564,7 @@ function buildOrderRowsAndSummary(formData, timestamp) {
     timestamp,
     formData.formNumber || '',
     fmFirmName, fmGstNo, fmArea, fmCustomer,
-    formData.whatsapp || '', fmSalesPerson,
+    formData.whatsapp || '', fmEmail, fmSalesPerson,
     fmOrderDate, fmDelivDate, fmClientType,
     fmPaymentTerms, formData.paymentDays || '',
     fmTransportMode, fmTransName,
@@ -751,11 +752,11 @@ function updateOrder(formData, timestamp) {
 // header fields from the first row.
 var ORDER_LOOKUP_COLS = {
   timestamp: 0, formNo: 1, firmName: 2, gstNo: 3, area: 4, customerName: 5,
-  whatsapp: 6, salesPerson: 7, orderDate: 8, deliveryDate: 9,
-  clientType: 10, paymentTerms: 11, paymentDays: 12,
-  transportMode: 13, transportName: 14, transporterNumber: 15, vehicleNumber: 16, driverNumber: 17,
-  productName: 18, ream: 19, box: 20, origRate: 21, discount: 22, netRate: 23, freight: 24,
-  remarks: 29
+  whatsapp: 6, email: 7, salesPerson: 8, orderDate: 9, deliveryDate: 10,
+  clientType: 11, paymentTerms: 12, paymentDays: 13,
+  transportMode: 14, transportName: 15, transporterNumber: 16, vehicleNumber: 17, driverNumber: 18,
+  productName: 19, ream: 20, box: 21, origRate: 22, discount: 23, netRate: 24, freight: 25,
+  remarks: 30
 };
 
 // Accepts a full PI No. (e.g. "PI-SP/26-27/00425") OR just a fragment/number
@@ -861,6 +862,7 @@ function getOrderByFormNumber(query) {
     areaName: first[col.area] || '',
     customerName: first[col.customerName] || '',
     whatsapp: first[col.whatsapp] || '',
+    email: first[col.email] || '',
     salesPerson: first[col.salesPerson] || '',
     orderDateISO: toISODate(first[col.orderDate]),
     deliveryDateISO: toISODate(first[col.deliveryDate]),
