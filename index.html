@@ -277,7 +277,7 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
 <div class="card fi">
   <div class="card-h"><span class="ico">&#128230;</span><span class="ttl">Products</span></div>
   <div class="card-b">
-    <div class="ph go" id="phR"><span>Product Name</span><span>Qty (Ream)</span><span>Qty (Box)</span><span class="oc">Rate (&#8377;) <span class="gn">+18% GST incl.</span></span><span class="oc" id="discHdr" style="display:none"></span><span class="oc" style="text-align:right">Amount (&#8377;)</span><span></span></div>
+    <div class="ph go" id="phR"><span>Product Name</span><span>Qty (Box)</span><span>Qty (Ream)</span><span class="oc">Rate (&#8377;) <span class="gn">+18% GST incl.</span></span><span class="oc" id="discHdr" style="display:none"></span><span class="oc" style="text-align:right">Amount (&#8377;)</span><span></span></div>
     <div id="ic"></div>
     <button type="button" class="ab" onclick="ar()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Add Item</button>
     <div class="of" id="totS" style="display:flex;justify-content:flex-end;margin-top:16px">
@@ -534,9 +534,9 @@ function sw(type){
   var ph=document.getElementById('phR');
   ph.className='ph '+(isO?'go':'ge');
   if(!isO){
-    ph.innerHTML='<span>Product Name</span><span>Qty (Ream)</span><span>Qty (Box)</span><span></span>';
+    ph.innerHTML='<span>Product Name</span><span>Qty (Box)</span><span>Qty (Ream)</span><span></span>';
   }else{
-    ph.innerHTML='<span>Product Name</span><span>Qty (Ream)</span><span>Qty (Box)</span><span class="oc">Rate (&#8377;) <span class="gn">+18% GST incl.</span></span><span class="oc" id="discHdr" style="display:none"></span><span class="oc" style="text-align:right">Amount (&#8377;)</span><span></span>';
+    ph.innerHTML='<span>Product Name</span><span>Qty (Box)</span><span>Qty (Ream)</span><span class="oc">Rate (&#8377;) <span class="gn">+18% GST incl.</span></span><span class="oc" id="discHdr" style="display:none"></span><span class="oc" style="text-align:right">Amount (&#8377;)</span><span></span>';
   }
   document.getElementById('totS').style.display=isO?'flex':'none';
   document.getElementById('trC').classList.toggle('hd',!isO);
@@ -983,13 +983,13 @@ function ar(){
       +'<input class="inp p-name" placeholder="Select product..." autocomplete="off" onfocus="showProductDD(this)" oninput="onProductInput(this)" onblur="hideProductDD(this)">'
       +'<div class="firm-dd"></div>'
     +'</div>'
-    +'<div class="fld">'
-        +'<span class="ml">Ream Qty</span>'
-        +'<input class="inp inp-mono q-ream" type="number" min="1" placeholder="0" oninput="syncQty(this,\'ream\')">'
-      +'</div>'
-      +'<div class="fld box-wrap">'
+    +'<div class="fld box-wrap">'
         +'<span class="ml">Box Qty</span>'
         +'<input class="inp inp-mono q-box" type="number" min="0" step="0.01" placeholder="0.00" oninput="syncQty(this,\'box\')">'
+      +'</div>'
+      +'<div class="fld">'
+        +'<span class="ml">Ream Qty</span>'
+        +'<input class="inp inp-mono q-ream" type="number" min="1" placeholder="0" oninput="syncQty(this,\'ream\')">'
       +'</div>'
     +'<div class="fld rate-wrap'+(isO?'':' hd')+'">'
       +'<span class="ml">Rate (&#8377;) <span style="color:var(--c-danger)">*</span></span>'
@@ -1353,28 +1353,28 @@ function showReview(d){
 
   var th='',tb='';
   if(isO){
-    th='<tr><th>Product</th><th style="text-align:center">Ream</th><th style="text-align:center">Box</th><th style="text-align:right">Rate (₹)</th><th style="text-align:right">Amount (₹)</th></tr>';
+    th='<tr><th>Product</th><th style="text-align:center">Box</th><th style="text-align:center">Ream</th><th style="text-align:right">Rate (₹)</th><th style="text-align:right">Amount (₹)</th></tr>';
     var tReams=0,tBoxes=0;
     (d.items||[]).forEach(function(it){
       var grossAmt=Math.round(it.ream*(it.origRate||it.rate));
       tReams+=it.ream||0;tBoxes+=it.box||0;
       tb+='<tr><td>'+it.name+'</td>'
-        +'<td style="text-align:center">'+it.ream+'</td>'
         +'<td style="text-align:center">'+Math.round(it.box||0)+'</td>'
+        +'<td style="text-align:center">'+it.ream+'</td>'
         +'<td style="text-align:right">'+(it.origRate||it.rate)+'</td>'
         +'<td style="text-align:right">'+grossAmt.toLocaleString('en-IN')+'</td></tr>';
     });
     tb+='<tr class="tot-row">'
       +'<td>TOTAL</td>'
-      +'<td style="text-align:center">'+Math.round(tReams)+' Ream</td>'
       +'<td style="text-align:center">'+Math.round(tBoxes*100)/100+' Box</td>'
+      +'<td style="text-align:center">'+Math.round(tReams)+' Ream</td>'
       +'<td></td><td></td></tr>';
   }else{
-    th='<tr><th>Product</th><th style="text-align:center">Ream</th><th style="text-align:center">Box</th></tr>';
+    th='<tr><th>Product</th><th style="text-align:center">Box</th><th style="text-align:center">Ream</th></tr>';
     (d.items||[]).forEach(function(it){
       tb+='<tr><td>'+it.name+'</td>'
-        +'<td style="text-align:center">'+it.ream+'</td>'
-        +'<td style="text-align:center">'+(it.box||'—')+'</td></tr>';
+        +'<td style="text-align:center">'+(it.box||'—')+'</td>'
+        +'<td style="text-align:center">'+it.ream+'</td></tr>';
     });
   }
   document.getElementById('rvProdHead').innerHTML=th;
@@ -1606,23 +1606,23 @@ function sr(d,driveUrl){
 
   var th='',tb='';
   if(isO){
-    th='<tr><th>Product</th><th style="text-align:center">Ream</th><th style="text-align:center">Box</th><th style="text-align:right">Rate (&#8377;)</th><th style="text-align:right">Amount (&#8377;)</th></tr>';
+    th='<tr><th>Product</th><th style="text-align:center">Box</th><th style="text-align:center">Ream</th><th style="text-align:right">Rate (&#8377;)</th><th style="text-align:right">Amount (&#8377;)</th></tr>';
     var totReamsPreview=0,totBoxesPreview=0;
     (d.items||[]).forEach(function(it){
       var displayRate=it.origRate||it.rate;
       var grossAmt=Math.round(it.ream*displayRate);
       totReamsPreview+=it.ream||0;totBoxesPreview+=it.box||0;
-      tb+='<tr><td>'+it.name+'</td><td style="text-align:center">'+it.ream+'</td><td style="text-align:center">'+Math.round(it.box||0)+'</td><td style="text-align:right">'+displayRate+'</td><td style="text-align:right">'+grossAmt+'</td></tr>';
+      tb+='<tr><td>'+it.name+'</td><td style="text-align:center">'+Math.round(it.box||0)+'</td><td style="text-align:center">'+it.ream+'</td><td style="text-align:right">'+displayRate+'</td><td style="text-align:right">'+grossAmt+'</td></tr>';
     });
     tb+='<tr style="background:var(--c-surface-alt);font-weight:700;border-top:2px solid var(--c-border)">'
       +'<td style="color:var(--c-primary)">TOTAL</td>'
-      +'<td style="text-align:center;color:var(--c-primary)">'+Math.round(totReamsPreview)+' Ream</td>'
       +'<td style="text-align:center;color:var(--c-muted)">'+Math.round(totBoxesPreview*100)/100+' Box</td>'
+      +'<td style="text-align:center;color:var(--c-primary)">'+Math.round(totReamsPreview)+' Ream</td>'
       +'<td></td><td></td></tr>';
   }else{
-    th='<tr><th>Product</th><th>Reams</th><th>Boxes</th></tr>';
+    th='<tr><th>Product</th><th>Boxes</th><th>Reams</th></tr>';
     (d.items||[]).forEach(function(it){
-      tb+='<tr><td>'+it.name+'</td><td>'+it.ream+'</td><td>'+(it.box||'—')+'</td></tr>';
+      tb+='<tr><td>'+it.name+'</td><td>'+(it.box||'—')+'</td><td>'+it.ream+'</td></tr>';
     });
   }
   document.getElementById('rTh').innerHTML=th;
@@ -1800,16 +1800,16 @@ function generatePDFDoc(d){
   if(isO){
     doc.text('#',colX[0]+2,tY+5.5);
     doc.text('Product',colX[1]+2,tY+5.5);
-    doc.text('Ream',colX[2]+2,tY+5.5);
-    doc.text('Box',colX[3]+2,tY+5.5);
+    doc.text('Box',colX[2]+2,tY+5.5);
+    doc.text('Ream',colX[3]+2,tY+5.5);
     doc.text('Rate',colX[4]+2,tY+5.5);
     doc.text('Amount',colX[5]+2,tY+5.5);
   }else{
     var eColX=[mg,mg+10,mg+120,mg+150];
     doc.text('#',eColX[0]+2,tY+5.5);
     doc.text('Product',eColX[1]+2,tY+5.5);
-    doc.text('Qty (Reams)',eColX[2]+2,tY+5.5);
-    doc.text('Qty (Boxes)',eColX[3]+2,tY+5.5);
+    doc.text('Qty (Boxes)',eColX[2]+2,tY+5.5);
+    doc.text('Qty (Reams)',eColX[3]+2,tY+5.5);
   }
 
   var rowY=tY+8;
@@ -1826,15 +1826,15 @@ function generatePDFDoc(d){
       var grossAmt=Math.round(it.ream*displayRate);
       doc.text(String(i+1),colX[0]+2,rowY+4.8);
       doc.text(String(it.name),colX[1]+2,rowY+4.8);
-      doc.text(String(it.ream)+' Ream',colX[2]+2,rowY+4.8);
-      doc.text(String(Math.round(it.box||0))+' Box',colX[3]+2,rowY+4.8);
+      doc.text(String(Math.round(it.box||0))+' Box',colX[2]+2,rowY+4.8);
+      doc.text(String(it.ream)+' Ream',colX[3]+2,rowY+4.8);
       doc.text(String(displayRate),colX[4]+2,rowY+4.8);
       doc.text(rs(grossAmt),colX[5]+2,rowY+4.8);
     }else{
       doc.text(String(i+1),eColX[0]+2,rowY+4.8);
       doc.text(String(it.name),eColX[1]+2,rowY+4.8);
-      doc.text(String(it.ream),eColX[2]+2,rowY+4.8);
-      doc.text(String(Math.round(it.box||0)),eColX[3]+2,rowY+4.8);
+      doc.text(String(Math.round(it.box||0)),eColX[2]+2,rowY+4.8);
+      doc.text(String(it.ream),eColX[3]+2,rowY+4.8);
     }
     rowY+=7;
   });
@@ -1864,9 +1864,9 @@ function generatePDFDoc(d){
     doc.setTextColor(...cGreen);
     doc.text('TOTAL',colX[1]+2,rowY+4.8);
     doc.setTextColor(...cText);
-    doc.text(String(Math.round(pdfTotReams))+' Ream',colX[2]+2,rowY+4.8);
+    doc.text(String(Math.round(pdfTotBoxes*100)/100)+' Box',colX[2]+2,rowY+4.8);
     doc.setTextColor(...cMuted);
-    doc.text(String(Math.round(pdfTotBoxes*100)/100)+' Box',colX[3]+2,rowY+4.8);
+    doc.text(String(Math.round(pdfTotReams))+' Ream',colX[3]+2,rowY+4.8);
     rowY+=9;
 
     var totX=pw/2+8,totW=pw/2-mg-8;
