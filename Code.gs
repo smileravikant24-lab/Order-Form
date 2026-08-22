@@ -141,14 +141,8 @@ function getSerialCacheKey(formType, fy) {
 }
 
 function getCachedMaxSerial(formType, fy) {
-  var props = PropertiesService.getScriptProperties();
-  var cacheKey = getSerialCacheKey(formType, fy);
-  var cached = parseInt(props.getProperty(cacheKey), 10);
-  if (isNaN(cached)) {
-    cached = scanMaxSerialFromSheet(formType, fy);
-    props.setProperty(cacheKey, String(cached));
-  }
-  return cached;
+  // Always scan the sheet so deleted rows are reflected immediately.
+  return scanMaxSerialFromSheet(formType, fy);
 }
 
 // Called only after an order/enquiry is actually written to the sheet, so
