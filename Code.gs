@@ -3,6 +3,9 @@ var FIRM_SHEET_NAME = 'WMS_Firms';
 var FIRM_COLUMN     = 1;
 var GST_COLUMN      = 2;
 
+var PARTY_MASTER_URL       = 'https://docs.google.com/spreadsheets/d/1R1eMFIwOdN5CyfrZa0K8NSVaJZnVmjPd95bOp2FYz90/edit';
+var PARTY_MASTER_SHEET     = 'PartyMaster';
+
 // Product master lives as a second tab in the same master spreadsheet as
 // the firm master. New products confirmed by the user (see
 // addNewProductToMaster) get appended here.
@@ -32,7 +35,9 @@ var SALES_PERSONS = [
   'MR. PRANAV SATIJA',
   'MR. MUKESH SHUKLA',
   'MR. RISHABH JAIN',
-  'MR. SONU CHAUHAN'
+  'MR. SONU CHAUHAN',
+  'MR. INDRESH',
+  'MS. POOJA'
 ];
 
 var WHATSAPP_CONFIG = {
@@ -51,7 +56,9 @@ function doGet(e) {
     var firms = getFirmData();
     var salesPersons = getSalesPersons();
     var products = getProductData();
-    return ContentService.createTextOutput(JSON.stringify({ firms: firms, salesPersons: salesPersons, products: products }))
+    var userEmail = '';
+    try { userEmail = Session.getActiveUser().getEmail() || ''; } catch(ue) {}
+    return ContentService.createTextOutput(JSON.stringify({ firms: firms, salesPersons: salesPersons, products: products, userEmail: userEmail }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
@@ -325,6 +332,18 @@ function addNewFirmToMaster(name, gst) {
     newRow[GST_COLUMN - 1] = gst;
     sheet.appendRow(newRow);
     try { CacheService.getScriptCache().remove(FIRM_CACHE_KEY); } catch (cacheErr) {}
+
+    // Also save to PartyMaster sheet
+    try {
+      var pmSS = SpreadsheetApp.openByUrl(PARTY_MASTER_URL);
+      var pmSheet = pmSS.getSheetByName(PARTY_MASTER_SHEET);
+      if (pmSheet) {
+        pmSheet.appendRow([name, gst, Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')]);
+      }
+    } catch (pmErr) {
+      Logger.log('PartyMaster save error: ' + pmErr.message);
+    }
+
     return { success: true };
   } catch (e) {
     Logger.log('addNewFirmToMaster Error: ' + e.message);
@@ -399,6 +418,17 @@ function getOrCreateSheet(name, headers) {
     hdrRange.setBackground('#1a5c2a');
     hdrRange.setFontColor('#ffffff');
     hdrRange.setBorder(true, true, true, true, true, true);
+  } else {
+    // Append any missing columns at the end (e.g. newly added 'Filled By (eMail)')
+    var lastCol = sheet.getLastColumn();
+    for (var c = lastCol; c < headers.length; c++) {
+      var cell = sheet.getRange(1, c + 1);
+      cell.setValue(headers[c]);
+      cell.setFontWeight('bold');
+      cell.setBackground('#1a5c2a');
+      cell.setFontColor('#ffffff');
+      cell.setBorder(true, true, true, true, true, true);
+    }
   }
   return sheet;
 }
@@ -458,7 +488,7 @@ var ORDER_DETAIL_HEADERS = [
   'Transport Mode', 'Transport Name', 'Transporter Number', 'Vehicle Number', 'Driver Number',
   'Product Name', 'Ream Qty', 'Box Qty', 'Original Rate', 'Discount', 'Net Rate', 'Freight (Item)',
   'Item Value', 'Item Value + Freight', 'GST (18%)', 'Item Grand Total',
-  'Remarks', 'PDF URL'
+  'Remarks', 'Filled By (eMail)', 'PDF URL'
 ];
 
 var ORDER_SUMMARY_HEADERS = [
@@ -469,7 +499,7 @@ var ORDER_SUMMARY_HEADERS = [
   'Items (Name | Ream | Box | Rate)', 'Total Reams', 'Total Boxes',
   'Gross Value', 'Total Discount', 'Net Value',
   'Freight', 'GST (18%)', 'Grand Total',
-  'Remarks', 'PDF URL'
+  'Remarks', 'Filled By (eMail)', 'PDF URL'
 ];
 
 // Builds the detail + summary rows for an order without touching the sheet.
@@ -494,6 +524,7 @@ function buildOrderRowsAndSummary(formData, timestamp) {
   var fmGstNo      = toAllCaps(formData.gstNo);
   var fmArea       = toAllCaps(formData.areaName);
   var fmCustomer   = toAllCaps(formData.customerName);
+  var fmEmail      = (formData.filledByEmail || '').toString().trim().toLowerCase();
   var fmOrderDate  = fmtDate(formData.orderDate);
   var fmDelivDate  = fmtDate(formData.deliveryDate);
   var fmClientType = toAllCaps(formData.clientType || '');
@@ -550,6 +581,7 @@ function buildOrderRowsAndSummary(formData, timestamp) {
       round2(itemOrigRate), round2(itemDiscount), round2(itemRate),
       round2(itemFreight), itemValue, itemWithFreight, itemGST, itemGrand,
       isFirst ? fmRemarks : '',
+      isFirst ? fmEmail : '',
       ''
     ]);
   }
@@ -573,6 +605,7 @@ function buildOrderRowsAndSummary(formData, timestamp) {
     round2(grossVal), round2(totalDiscSummary), round2(netVal),
     round2(freightSummary), gstSummary, grandTotal,
     fmRemarks,
+    fmEmail,
     ''
   ];
 
@@ -755,7 +788,7 @@ var ORDER_LOOKUP_COLS = {
   clientType: 10, paymentTerms: 11, paymentDays: 12,
   transportMode: 13, transportName: 14, transporterNumber: 15, vehicleNumber: 16, driverNumber: 17,
   productName: 18, ream: 19, box: 20, origRate: 21, discount: 22, netRate: 23, freight: 24,
-  remarks: 29
+  remarks: 29, email: 30
 };
 
 // Accepts a full PI No. (e.g. "PI-SP/26-27/00425") OR just a fragment/number
@@ -886,7 +919,7 @@ function processEnquiry(formData, timestamp) {
     'Timestamp', 'Form No', 'Firm Name', 'GST No', 'Area', 'Customer Name',
     'WhatsApp', 'Client Type', 'Client Source', 'Reference Name', 'Sales Person',
     'Product Name', 'Ream Qty', 'Box Qty', 'Rate',
-    'Remarks', 'Visiting Card Link', 'Shop Photo Link', 'eMail Address', 'PDF URL'
+    'Remarks', 'Visiting Card Link', 'Shop Photo Link', 'Filled By (eMail)', 'PDF URL'
   ];
 
   var sheet = getOrCreateSheet('Enquiries', headers);
@@ -921,7 +954,7 @@ function processEnquiry(formData, timestamp) {
   var fmReferenceName = toAllCaps(formData.referenceName || '');
   var fmSalesPerson   = toAllCaps(formData.salesPerson || '');
   var fmRemarks       = toAllCaps(formData.remarks || '');
-  var fmEmail         = toAllCaps(formData.email || '');
+  var fmEmail         = (formData.filledByEmail || '').toString().trim().toLowerCase();
 
   var allRows = [];
   for (var i = 0; i < items.length; i++) {

@@ -241,6 +241,7 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
       <div class="fld"><label class="lbl">Area Name <span class="r">*</span></label><input class="inp" id="areaName" placeholder="Enter area name" required></div>
       <div class="fld"><label class="lbl">Customer Name <span class="r">*</span></label><input class="inp" id="custName" placeholder="Enter customer name" required></div>
       <div class="fld"><label class="lbl">WhatsApp Mobile <span class="r">*</span></label><input class="inp" id="wap" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number" required oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
+      <div class="fld full"><label class="lbl">Form Filled By &#8212; Your Email ID <span class="r">*</span></label><input class="inp" id="fillerEmail" type="email" placeholder="yourname@email.com" required autocomplete="email"></div>
       <div class="fld of"><label class="lbl">Sales Person <span class="r">*</span></label><select class="sel" id="sp1"><option value="">&#8212; Select &#8212;</option></select></div>
       <div class="fld of"><label class="lbl">Date of Order <span class="r">*</span></label><input class="inp" id="oDate" type="date"></div>
       <div class="fld of"><label class="lbl">Date of Delivery</label><input class="inp" id="dDate" type="date"></div>
@@ -276,7 +277,7 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
 <div class="card fi">
   <div class="card-h"><span class="ico">&#128230;</span><span class="ttl">Products</span></div>
   <div class="card-b">
-    <div class="ph go" id="phR"><span>Product Name</span><span>Qty (Box)</span><span>Qty (Ream)</span><span class="oc">Rate (&#8377;) <span class="gn">+18% GST incl.</span></span><span class="oc" id="discHdr" style="display:none"></span><span class="oc" style="text-align:right">Amount (&#8377;)</span><span></span></div>
+    <div class="ph go" id="phR"><span>Product Name</span><span>Qty (Ream)</span><span>Qty (Box)</span><span class="oc">Rate (&#8377;) <span class="gn">+18% GST incl.</span></span><span class="oc" id="discHdr" style="display:none"></span><span class="oc" style="text-align:right">Amount (&#8377;)</span><span></span></div>
     <div id="ic"></div>
     <button type="button" class="ab" onclick="ar()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Add Item</button>
     <div class="of" id="totS" style="display:flex;justify-content:flex-end;margin-top:16px">
@@ -402,22 +403,17 @@ const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzjlijGXaELu2FYQZif
 // SALES PERSON → EMAIL MAPPING (client-side only)
 // ══════════════════════════════════════════════════
 const SALES_EMAIL_MAP = {
-  'Mr. Sonu Chauhan'   : 'sonusatijapaper@gmail.com',
-  'Mr. Rishash Jain'   : 'rishabhsatijapaper@gmail.com',
-  'Mr. Pawan Negi'     : 'pawansatijapaper@gmail.com',
-  'Mr. Mukesh Shukla'  : 'mukesh.shukla@satijapaper.com',
-  'Mr. Pranav Satija'  : 'pranavsatija@satijapaper.com'
+  'MR. PAWAN NEGI'    : 'pawansatijapaper@gmail.com',
+  'MR. PRANAV SATIJA' : 'pranavsatija@satijapaper.com',
+  'MR. MUKESH SHUKLA' : 'mukesh.shukla@satijapaper.com',
+  'MR. RISHABH JAIN'  : 'rishabhsatijapaper@gmail.com',
+  'MR. SONU CHAUHAN'  : 'sonusatijapaper@gmail.com'
 };
 
 function getSalesEmail(name) {
   if (!name) return '';
-  var trimmed = name.trim();
-  if (SALES_EMAIL_MAP[trimmed]) return SALES_EMAIL_MAP[trimmed];
-  var lower = trimmed.toLowerCase();
-  for (var k in SALES_EMAIL_MAP) {
-    if (k.toLowerCase() === lower) return SALES_EMAIL_MAP[k];
-  }
-  return '';
+  var key = name.trim().toUpperCase();
+  return SALES_EMAIL_MAP[key] || '';
 }
 
 const IT=["DOUBLE A A4 70 GSM","DOUBLE A A4 75 GSM","DOUBLE A A4 80 GSM","DOUBLE A A4 100 GSM","N R COPIER A4 70 GSM","N R COPIER A4 75 GSM","N R COPIER A4 80 GSM","N R COPIER A3 70 GSM","N R COPIER A3 75 GSM","KHANNA A4 KBOLT (S) 65 GSM","KHANNA A4 EPRINT (S) 70 GSM","KHANNA A4 ECOPY (S) 75 GSM","KHANNA A3 KBOLT (S) 65 GSM","SATIA A4 65 GSM","SATIA A4 70 GSM","SATIA A4 75 GSM","SATIA A3 70 GSM","SATIA FS 70 GSM","ROZAANA A4 70 GSM","I K COPIER A4 70 GSM","P P LITE A4 70 GSM","PAPER ONE A4 75 GSM","PAPER ONE A4 100 GSM","PAPER ONE A3 100 GSM","MAPLE A4 70 GSM","SPECTRA A4 75 GSM","CENTURY STAR A4 75 GSM","J K RED A4 75 GSM","REFLECTION A4 65 GSM","REFLECTION A4 70 GSM","REFLECTION A4 75 GSM","REFLECTION A4 100 GSM","REFLECTION FS 70 GSM","REFLECTION A3 70 GSM","FINEPRINT A4 70 GSM","FINEPRINT A4 75 GSM","Tarang Yellow A4 75 GSM","Tarang Pink A4 75 GSM","Tarang Green A4 75 GSM","Tarang Blue A4 75 GSM","Tarang Ivory A4 75 GSM","ROZAANA A4 75 GSM"];
@@ -528,9 +524,9 @@ function sw(type){
   var ph=document.getElementById('phR');
   ph.className='ph '+(isO?'go':'ge');
   if(!isO){
-    ph.innerHTML='<span>Product Name</span><span>Qty (Box)</span><span>Qty (Ream)</span><span></span>';
+    ph.innerHTML='<span>Product Name</span><span>Qty (Ream)</span><span>Qty (Box)</span><span></span>';
   }else{
-    ph.innerHTML='<span>Product Name</span><span>Qty (Box)</span><span>Qty (Ream)</span><span class="oc">Rate (&#8377;) <span class="gn">+18% GST incl.</span></span><span class="oc" id="discHdr" style="display:none"></span><span class="oc" style="text-align:right">Amount (&#8377;)</span><span></span>';
+    ph.innerHTML='<span>Product Name</span><span>Qty (Ream)</span><span>Qty (Box)</span><span class="oc">Rate (&#8377;) <span class="gn">+18% GST incl.</span></span><span class="oc" id="discHdr" style="display:none"></span><span class="oc" style="text-align:right">Amount (&#8377;)</span><span></span>';
   }
   document.getElementById('totS').style.display=isO?'flex':'none';
   document.getElementById('trC').classList.toggle('hd',!isO);
@@ -585,6 +581,23 @@ function applyInitialData(data){
     if(!known)IT.push(name);
     packingMap[name]=parseFloat(p.perBox)||DEFAULT_PACKING_RATIO;
   });
+
+  // Auto-fill filler email from Google session (like Google Forms)
+  if(data.userEmail){
+    var fe=document.getElementById('fillerEmail');
+    if(fe&&!fe.value){
+      fe.value=data.userEmail;
+      fe.readOnly=true;
+      fe.classList.add('inp-readonly');
+      var wrap=fe.closest('.fld');
+      if(wrap){
+        var badge=document.createElement('div');
+        badge.style.cssText='display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11.5px;font-weight:600;color:var(--c-primary)';
+        badge.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg> Verified: '+escHtml(data.userEmail);
+        wrap.appendChild(badge);
+      }
+    }
+  }
 }
 
 function loadCachedInitialData(){
@@ -976,13 +989,13 @@ function ar(){
       +'<input class="inp p-name" placeholder="Select product..." autocomplete="off" onfocus="showProductDD(this)" oninput="onProductInput(this)" onblur="hideProductDD(this)">'
       +'<div class="firm-dd"></div>'
     +'</div>'
-    +'<div class="fld box-wrap">'
-        +'<span class="ml">Box Qty</span>'
-        +'<input class="inp inp-mono q-box" type="number" min="0" step="0.01" placeholder="0.00" oninput="syncQty(this,\'box\')">'
-      +'</div>'
-      +'<div class="fld">'
+    +'<div class="fld">'
         +'<span class="ml">Ream Qty</span>'
         +'<input class="inp inp-mono q-ream" type="number" min="1" placeholder="0" oninput="syncQty(this,\'ream\')">'
+      +'</div>'
+      +'<div class="fld box-wrap">'
+        +'<span class="ml">Box Qty</span>'
+        +'<input class="inp inp-mono q-box" type="number" min="0" step="0.01" placeholder="0.00" oninput="syncQty(this,\'box\')">'
       +'</div>'
     +'<div class="fld rate-wrap'+(isO?'':' hd')+'">'
       +'<span class="ml">Rate (&#8377;) <span style="color:var(--c-danger)">*</span></span>'
@@ -1271,6 +1284,7 @@ async function sub(e){
     areaName:tp(document.getElementById('areaName').value),
     customerName:document.getElementById('custName').value.trim(),
     whatsapp:document.getElementById('wap').value.trim(),
+    filledByEmail:(document.getElementById('fillerEmail').value||'').trim().toLowerCase(),
     items:items,
     remarks:document.getElementById('rmk').value.trim()
   };
