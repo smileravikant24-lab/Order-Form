@@ -505,7 +505,7 @@ function buildOrderRowsAndSummary(formData, timestamp) {
   var fmGstNo      = toAllCaps(formData.gstNo);
   var fmArea       = toAllCaps(formData.areaName);
   var fmCustomer   = toAllCaps(formData.customerName);
-  var fmEmail      = (formData.email || '').toString().trim().toLowerCase();
+  var fmEmail      = (formData.filledByEmail || '').toString().trim().toLowerCase();
   var fmOrderDate  = fmtDate(formData.orderDate);
   var fmDelivDate  = fmtDate(formData.deliveryDate);
   var fmClientType = toAllCaps(formData.clientType || '');
@@ -935,7 +935,7 @@ function processEnquiry(formData, timestamp) {
   var fmReferenceName = toAllCaps(formData.referenceName || '');
   var fmSalesPerson   = toAllCaps(formData.salesPerson || '');
   var fmRemarks       = toAllCaps(formData.remarks || '');
-  var fmEmail         = (formData.email || '').toString().trim().toLowerCase();
+  var fmEmail         = (formData.filledByEmail || '').toString().trim().toLowerCase();
 
   var allRows = [];
   for (var i = 0; i < items.length; i++) {
