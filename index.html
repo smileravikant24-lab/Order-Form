@@ -241,7 +241,7 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
       <div class="fld"><label class="lbl">Area Name <span class="r">*</span></label><input class="inp" id="areaName" placeholder="Enter area name" required></div>
       <div class="fld"><label class="lbl">Customer Name <span class="r">*</span></label><input class="inp" id="custName" placeholder="Enter customer name" required></div>
       <div class="fld"><label class="lbl">WhatsApp Mobile <span class="r">*</span></label><input class="inp" id="wap" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number" required oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
-      <div class="fld full"><label class="lbl">Form Filled By &#8212; Your Email ID <span class="r">*</span></label><input class="inp" id="fillerEmail" type="email" placeholder="yourname@email.com" required autocomplete="email"></div>
+      <div class="fld full"><label class="lbl">Form Filled By <span class="r">*</span></label><select class="sel" id="fillerName" required><option value="">&#8212; Select &#8212;</option></select></div>
       <div class="fld of"><label class="lbl">Sales Person <span class="r">*</span></label><select class="sel" id="sp1"><option value="">&#8212; Select &#8212;</option></select></div>
       <div class="fld of"><label class="lbl">Date of Order <span class="r">*</span></label><input class="inp" id="oDate" type="date"></div>
       <div class="fld of"><label class="lbl">Date of Delivery</label><input class="inp" id="dDate" type="date"></div>
@@ -461,6 +461,15 @@ window._firmDataLoaded=false;
 // even if the network call to the backend fails or is slow. lw() will
 // still refresh this from the server list once it loads successfully.
 const FALLBACK_SALES_PERSONS=['MR. PAWAN NEGI','MR. PRANAV SATIJA','MR. MUKESH SHUKLA','MR. RISHABH JAIN','MR. SONU CHAUHAN'];
+const FORM_FILLERS=['MR. PAWAN NEGI','MR. PRANAV SATIJA','MR. MUKESH SHUKLA','MR. RISHABH JAIN','MR. SONU CHAUHAN','MR. INDRESH','MS. POOJA'];
+function populateFormFillers(list){
+  var s=document.getElementById('fillerName');
+  if(!s)return;
+  var cur=s.value;
+  s.innerHTML='<option value="">&#8212; Select &#8212;</option>';
+  list.forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n;s.appendChild(o);});
+  if(cur)s.value=cur;
+}
 function populateSalesPersons(list){
   ['sp1','sp2'].forEach(function(id){
     var s=document.getElementById(id);
@@ -480,6 +489,7 @@ window.addEventListener('DOMContentLoaded',function(){
   document.getElementById('oDate').min=today;
   document.getElementById('dDate').min=today;
   populateSalesPersons(FALLBACK_SALES_PERSONS);
+  populateFormFillers(FORM_FILLERS);
   sw('Order');
   lw();
   ar();
@@ -582,22 +592,6 @@ function applyInitialData(data){
     packingMap[name]=parseFloat(p.perBox)||DEFAULT_PACKING_RATIO;
   });
 
-  // Auto-fill filler email from Google session (like Google Forms)
-  if(data.userEmail){
-    var fe=document.getElementById('fillerEmail');
-    if(fe&&!fe.value){
-      fe.value=data.userEmail;
-      fe.readOnly=true;
-      fe.classList.add('inp-readonly');
-      var wrap=fe.closest('.fld');
-      if(wrap){
-        var badge=document.createElement('div');
-        badge.style.cssText='display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11.5px;font-weight:600;color:var(--c-primary)';
-        badge.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg> Verified: '+escHtml(data.userEmail);
-        wrap.appendChild(badge);
-      }
-    }
-  }
 }
 
 function loadCachedInitialData(){
@@ -1284,7 +1278,7 @@ async function sub(e){
     areaName:tp(document.getElementById('areaName').value),
     customerName:document.getElementById('custName').value.trim(),
     whatsapp:document.getElementById('wap').value.trim(),
-    filledByEmail:(document.getElementById('fillerEmail').value||'').trim().toLowerCase(),
+    filledByEmail:(document.getElementById('fillerName').value||'').trim(),
     items:items,
     remarks:document.getElementById('rmk').value.trim()
   };

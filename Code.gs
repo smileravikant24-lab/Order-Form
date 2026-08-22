@@ -35,9 +35,7 @@ var SALES_PERSONS = [
   'MR. PRANAV SATIJA',
   'MR. MUKESH SHUKLA',
   'MR. RISHABH JAIN',
-  'MR. SONU CHAUHAN',
-  'MR. INDRESH',
-  'MS. POOJA'
+  'MR. SONU CHAUHAN'
 ];
 
 var WHATSAPP_CONFIG = {
@@ -56,9 +54,7 @@ function doGet(e) {
     var firms = getFirmData();
     var salesPersons = getSalesPersons();
     var products = getProductData();
-    var userEmail = '';
-    try { userEmail = Session.getActiveUser().getEmail() || ''; } catch(ue) {}
-    return ContentService.createTextOutput(JSON.stringify({ firms: firms, salesPersons: salesPersons, products: products, userEmail: userEmail }))
+    return ContentService.createTextOutput(JSON.stringify({ firms: firms, salesPersons: salesPersons, products: products }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
@@ -419,7 +415,7 @@ function getOrCreateSheet(name, headers) {
     hdrRange.setFontColor('#ffffff');
     hdrRange.setBorder(true, true, true, true, true, true);
   } else {
-    // Append any missing columns at the end (e.g. newly added 'Filled By (eMail)')
+    // Append any missing columns at the end (e.g. newly added 'Filled By (Name)')
     var lastCol = sheet.getLastColumn();
     for (var c = lastCol; c < headers.length; c++) {
       var cell = sheet.getRange(1, c + 1);
@@ -488,7 +484,7 @@ var ORDER_DETAIL_HEADERS = [
   'Transport Mode', 'Transport Name', 'Transporter Number', 'Vehicle Number', 'Driver Number',
   'Product Name', 'Ream Qty', 'Box Qty', 'Original Rate', 'Discount', 'Net Rate', 'Freight (Item)',
   'Item Value', 'Item Value + Freight', 'GST (18%)', 'Item Grand Total',
-  'Remarks', 'Filled By (eMail)', 'PDF URL'
+  'Remarks', 'Filled By (Name)', 'PDF URL'
 ];
 
 var ORDER_SUMMARY_HEADERS = [
@@ -499,7 +495,7 @@ var ORDER_SUMMARY_HEADERS = [
   'Items (Name | Ream | Box | Rate)', 'Total Reams', 'Total Boxes',
   'Gross Value', 'Total Discount', 'Net Value',
   'Freight', 'GST (18%)', 'Grand Total',
-  'Remarks', 'Filled By (eMail)', 'PDF URL'
+  'Remarks', 'Filled By (Name)', 'PDF URL'
 ];
 
 // Builds the detail + summary rows for an order without touching the sheet.
@@ -524,7 +520,7 @@ function buildOrderRowsAndSummary(formData, timestamp) {
   var fmGstNo      = toAllCaps(formData.gstNo);
   var fmArea       = toAllCaps(formData.areaName);
   var fmCustomer   = toAllCaps(formData.customerName);
-  var fmEmail      = (formData.filledByEmail || '').toString().trim().toLowerCase();
+  var fmEmail      = toAllCaps(formData.filledByEmail || '');
   var fmOrderDate  = fmtDate(formData.orderDate);
   var fmDelivDate  = fmtDate(formData.deliveryDate);
   var fmClientType = toAllCaps(formData.clientType || '');
@@ -919,7 +915,7 @@ function processEnquiry(formData, timestamp) {
     'Timestamp', 'Form No', 'Firm Name', 'GST No', 'Area', 'Customer Name',
     'WhatsApp', 'Client Type', 'Client Source', 'Reference Name', 'Sales Person',
     'Product Name', 'Ream Qty', 'Box Qty', 'Rate',
-    'Remarks', 'Visiting Card Link', 'Shop Photo Link', 'Filled By (eMail)', 'PDF URL'
+    'Remarks', 'Visiting Card Link', 'Shop Photo Link', 'Filled By (Name)', 'PDF URL'
   ];
 
   var sheet = getOrCreateSheet('Enquiries', headers);
@@ -954,7 +950,7 @@ function processEnquiry(formData, timestamp) {
   var fmReferenceName = toAllCaps(formData.referenceName || '');
   var fmSalesPerson   = toAllCaps(formData.salesPerson || '');
   var fmRemarks       = toAllCaps(formData.remarks || '');
-  var fmEmail         = (formData.filledByEmail || '').toString().trim().toLowerCase();
+  var fmEmail         = toAllCaps(formData.filledByEmail || '');
 
   var allRows = [];
   for (var i = 0; i < items.length; i++) {
