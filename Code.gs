@@ -3,6 +3,9 @@ var FIRM_SHEET_NAME = 'WMS_Firms';
 var FIRM_COLUMN     = 1;
 var GST_COLUMN      = 2;
 
+var PARTY_MASTER_URL       = 'https://docs.google.com/spreadsheets/d/1R1eMFIwOdN5CyfrZa0K8NSVaJZnVmjPd95bOp2FYz90/edit';
+var PARTY_MASTER_SHEET     = 'PartyMaster';
+
 // Product master lives as a second tab in the same master spreadsheet as
 // the firm master. New products confirmed by the user (see
 // addNewProductToMaster) get appended here.
@@ -32,7 +35,9 @@ var SALES_PERSONS = [
   'MR. PRANAV SATIJA',
   'MR. MUKESH SHUKLA',
   'MR. RISHABH JAIN',
-  'MR. SONU CHAUHAN'
+  'MR. SONU CHAUHAN',
+  'MR. INDRESH',
+  'MS. POOJA'
 ];
 
 var WHATSAPP_CONFIG = {
@@ -327,6 +332,18 @@ function addNewFirmToMaster(name, gst) {
     newRow[GST_COLUMN - 1] = gst;
     sheet.appendRow(newRow);
     try { CacheService.getScriptCache().remove(FIRM_CACHE_KEY); } catch (cacheErr) {}
+
+    // Also save to PartyMaster sheet
+    try {
+      var pmSS = SpreadsheetApp.openByUrl(PARTY_MASTER_URL);
+      var pmSheet = pmSS.getSheetByName(PARTY_MASTER_SHEET);
+      if (pmSheet) {
+        pmSheet.appendRow([name, gst, Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')]);
+      }
+    } catch (pmErr) {
+      Logger.log('PartyMaster save error: ' + pmErr.message);
+    }
+
     return { success: true };
   } catch (e) {
     Logger.log('addNewFirmToMaster Error: ' + e.message);
