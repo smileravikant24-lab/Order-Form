@@ -453,7 +453,7 @@ function processForm(formData) {
 
 var ORDER_DETAIL_HEADERS = [
   'Timestamp', 'Form No', 'Firm Name', 'GST No', 'Area', 'Customer Name',
-  'WhatsApp', 'eMail Address', 'Sales Person', 'Order Date', 'Delivery Date',
+  'WhatsApp', 'Filled By (eMail)', 'Sales Person', 'Order Date', 'Delivery Date',
   'Client Type', 'Payment Terms', 'Payment Days',
   'Transport Mode', 'Transport Name', 'Transporter Number', 'Vehicle Number', 'Driver Number',
   'Product Name', 'Ream Qty', 'Box Qty', 'Original Rate', 'Discount', 'Net Rate', 'Freight (Item)',
@@ -463,7 +463,7 @@ var ORDER_DETAIL_HEADERS = [
 
 var ORDER_SUMMARY_HEADERS = [
   'Timestamp', 'Form No', 'Firm Name', 'GST No', 'Area', 'Customer Name',
-  'WhatsApp', 'eMail Address', 'Sales Person', 'Order Date', 'Delivery Date',
+  'WhatsApp', 'Filled By (eMail)', 'Sales Person', 'Order Date', 'Delivery Date',
   'Client Type', 'Payment Terms', 'Payment Days',
   'Transport Mode', 'Transport Name', 'Transporter Number', 'Vehicle Number', 'Driver Number',
   'Items (Name | Ream | Box | Rate)', 'Total Reams', 'Total Boxes',
@@ -888,7 +888,7 @@ function processEnquiry(formData, timestamp) {
     'Timestamp', 'Form No', 'Firm Name', 'GST No', 'Area', 'Customer Name',
     'WhatsApp', 'Client Type', 'Client Source', 'Reference Name', 'Sales Person',
     'Product Name', 'Ream Qty', 'Box Qty', 'Rate',
-    'Remarks', 'Visiting Card Link', 'Shop Photo Link', 'eMail Address', 'PDF URL'
+    'Remarks', 'Visiting Card Link', 'Shop Photo Link', 'Filled By (eMail)', 'PDF URL'
   ];
 
   var sheet = getOrCreateSheet('Enquiries', headers);

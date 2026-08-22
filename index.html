@@ -241,7 +241,6 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
       <div class="fld"><label class="lbl">Area Name <span class="r">*</span></label><input class="inp" id="areaName" placeholder="Enter area name" required></div>
       <div class="fld"><label class="lbl">Customer Name <span class="r">*</span></label><input class="inp" id="custName" placeholder="Enter customer name" required></div>
       <div class="fld"><label class="lbl">WhatsApp Mobile <span class="r">*</span></label><input class="inp" id="wap" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number" required oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
-      <div class="fld"><label class="lbl">Customer eMail</label><input class="inp" id="custEmail" type="email" placeholder="customer@email.com" autocomplete="off" style="text-transform:lowercase"></div>
       <div class="fld of"><label class="lbl">Sales Person <span class="r">*</span></label><select class="sel" id="sp1"><option value="">&#8212; Select &#8212;</option></select></div>
       <div class="fld of"><label class="lbl">Date of Order <span class="r">*</span></label><input class="inp" id="oDate" type="date"></div>
       <div class="fld of"><label class="lbl">Date of Delivery</label><input class="inp" id="dDate" type="date"></div>
@@ -910,7 +909,6 @@ function populateFormForModify(o){
   document.getElementById('areaName').value=o.areaName||'';
   document.getElementById('custName').value=o.customerName||'';
   document.getElementById('wap').value=o.whatsapp||'';
-  document.getElementById('custEmail').value=o.email||'';
   document.getElementById('sp1').value=o.salesPerson||'';
   document.getElementById('oDate').value=o.orderDateISO||'';
   document.getElementById('dDate').value=o.deliveryDateISO||'';
@@ -1257,7 +1255,6 @@ async function sub(e){
     areaName:tp(document.getElementById('areaName').value),
     customerName:document.getElementById('custName').value.trim(),
     whatsapp:document.getElementById('wap').value.trim(),
-    email:(document.getElementById('custEmail').value||'').trim().toLowerCase(),
     items:items,
     remarks:document.getElementById('rmk').value.trim()
   };
@@ -1314,14 +1311,12 @@ function showReview(d){
     rows.push(['Mobile No.',d.whatsapp,'Client Type',d.clientType||'—']);
     var payStr=d.paymentTerms==='Credit Days'?d.paymentDays+' Days Credit':(d.paymentTerms||'—');
     rows.push(['Payment Terms',payStr,'Delivery Date',fd(d.deliveryDate)]);
-    if(d.email) rows.push(['eMail',d.email,'','']);
   }else{
     rows.push(['Firm Name','M/s. '+d.firmName,'GST No.',d.gstNo||'—']);
     rows.push(['Area',d.areaName,'Client Type',d.clientType||'—']);
     rows.push(['Customer Name',d.customerName,'Sales Person',spCell]);
     rows.push(['Mobile No.',d.whatsapp,'Client Source',d.clientSource||'—']);
     if(d.referenceName) rows.push(['Reference',d.referenceName,'','']);
-    if(d.email) rows.push(['eMail',d.email,'','']);
   }
   var tbl='';
   rows.forEach(function(r){
@@ -1467,6 +1462,7 @@ function confirmSubmit(){
 
 function doSubmit(d,btn,sTxt,sSpn){
   var serverData = Object.assign({}, d);
+  serverData.email = serverData.salesEmail || '';
   delete serverData.salesEmail;
 
   function submitToServer(pdfB64){
@@ -1570,7 +1566,6 @@ function sr(d,driveUrl){
     h+='<div><div class="ll">Client Type</div><div class="vv">'+(d.clientType||'—')+'</div></div>';
     h+='<div><div class="ll">Payment Terms</div><div class="vv">'+(d.paymentTerms==='Credit Days'?d.paymentDays+' Days Credit':d.paymentTerms||'—')+'</div></div>';
     h+='<div><div class="ll">Delivery Date</div><div class="vv">'+fd(d.deliveryDate)+'</div></div>';
-    if(d.email){h+='<div><div class="ll">eMail</div><div class="vv">'+d.email+'</div></div>';}
   }else{
     h+='<div><div class="ll">Firm Name</div><div class="vv">M/s. '+d.firmName+'</div></div>';
     h+='<div><div class="ll">GST No.</div><div class="vv">'+(d.gstNo||'—')+'</div></div>';
@@ -1583,7 +1578,6 @@ function sr(d,driveUrl){
     h+='<div><div class="ll">Mobile No.</div><div class="vv">'+d.whatsapp+'</div></div>';
     h+='<div><div class="ll">Client Source</div><div class="vv">'+(d.clientSource||'—')+'</div></div>';
     if(d.referenceName){h+='<div><div class="ll">Reference</div><div class="vv">'+d.referenceName+'</div></div>';}
-    if(d.email){h+='<div><div class="ll">eMail</div><div class="vv">'+d.email+'</div></div>';}
   }
   document.getElementById('rInfo').innerHTML=h;
 
