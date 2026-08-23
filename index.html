@@ -1266,6 +1266,23 @@ async function sub(e){
     }
   }
 
+  if(CT==='Order'){
+    if(!document.getElementById('sp1').value){
+      sMsg.className='sm er';
+      sMsg.textContent='Sales Person chunna zaroori hai!';
+      sMsg.classList.remove('hd');
+      document.getElementById('sp1').focus();
+      return;
+    }
+    if(!document.querySelector('input[name="tm"]:checked')){
+      sMsg.className='sm er';
+      sMsg.textContent='LBP ya FOR transport mode chunna zaroori hai!';
+      sMsg.classList.remove('hd');
+      document.getElementById('pL').scrollIntoView({behavior:'smooth',block:'center'});
+      return;
+    }
+  }
+
   sMsg.classList.add('hd');
 
   var d={
