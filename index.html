@@ -1419,7 +1419,7 @@ function showReview(d){
     });
     tb+='<tr class="tot-row">'
       +'<td>TOTAL</td>'
-      +'<td style="text-align:center">'+Math.round(tBoxes*100)/100+' Box</td>'
+      +'<td style="text-align:center">'+Math.round(tBoxes)+' Box</td>'
       +'<td style="text-align:center">'+Math.round(tReams)+' Ream</td>'
       +'<td></td><td></td></tr>';
   }else{
@@ -1669,7 +1669,7 @@ function sr(d,driveUrl){
     });
     tb+='<tr style="background:var(--c-surface-alt);font-weight:700;border-top:2px solid var(--c-border)">'
       +'<td style="color:var(--c-primary)">TOTAL</td>'
-      +'<td style="text-align:center;color:var(--c-muted)">'+Math.round(totBoxesPreview*100)/100+' Box</td>'
+      +'<td style="text-align:center;color:var(--c-muted)">'+Math.round(totBoxesPreview)+' Box</td>'
       +'<td style="text-align:center;color:var(--c-primary)">'+Math.round(totReamsPreview)+' Ream</td>'
       +'<td></td><td></td></tr>';
   }else{
@@ -1917,7 +1917,7 @@ function generatePDFDoc(d){
     doc.setTextColor(...cGreen);
     doc.text('TOTAL',colX[1]+2,rowY+4.8);
     doc.setTextColor(...cText);
-    doc.text(String(Math.round(pdfTotBoxes*100)/100)+' Box',colX[2]+2,rowY+4.8);
+    doc.text(String(Math.round(pdfTotBoxes))+' Box',colX[2]+2,rowY+4.8);
     doc.setTextColor(...cMuted);
     doc.text(String(Math.round(pdfTotReams))+' Ream',colX[3]+2,rowY+4.8);
     rowY+=9;
