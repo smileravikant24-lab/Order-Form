@@ -396,8 +396,39 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
 <div id="customDialog"></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script>
 const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzjlijGXaELu2FYQZifc08hsEJk8fBBbuq7a7gnmifw6olnQS0hyzpIcXOVlC2k5Q4/exec';
+
+var TERMS_PDF_BYTES = null;
+function fetchTermsPdf(){
+  fetch(WEB_APP_URL+'?action=getTermsPdf')
+    .then(function(r){return r.json();})
+    .then(function(res){
+      if(res.success&&res.pdf){
+        var bin=atob(res.pdf);
+        var arr=new Uint8Array(bin.length);
+        for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+        TERMS_PDF_BYTES=arr.buffer;
+      }
+    })
+    .catch(function(e){console.warn('Terms PDF fetch failed:',e);});
+}
+
+async function generateAndMergePDF(d){
+  var b64=generatePDFDoc(d);
+  if(!TERMS_PDF_BYTES||typeof PDFLib==='undefined')return b64;
+  try{
+    var mainDoc=await PDFLib.PDFDocument.load(b64);
+    var termsDoc=await PDFLib.PDFDocument.load(TERMS_PDF_BYTES);
+    var pages=await mainDoc.copyPages(termsDoc,termsDoc.getPageIndices());
+    pages.forEach(function(p){mainDoc.addPage(p);});
+    var merged=await mainDoc.save();
+    var str='';var bytes=new Uint8Array(merged);
+    for(var i=0;i<bytes.length;i++)str+=String.fromCharCode(bytes[i]);
+    return 'data:application/pdf;base64,'+btoa(str);
+  }catch(e){console.error('PDF merge error:',e);return b64;}
+}
 
 // ══════════════════════════════════════════════════
 // SALES PERSON → EMAIL MAPPING (client-side only)
@@ -494,6 +525,7 @@ window.addEventListener('DOMContentLoaded',function(){
   lw();
   ar();
   loadLogo();
+  fetchTermsPdf();
 });
 
 function loadLogo(){
@@ -1543,9 +1575,9 @@ function doSubmit(d,btn,sTxt,sSpn){
     });
   }
 
-  setTimeout(function(){
+  setTimeout(async function(){
     try{
-      var pdfB64=generatePDFDoc(d);
+      var pdfB64=await generateAndMergePDF(d);
       submitToServer(pdfB64);
     }catch(pdfErr){
       console.error('PDF gen error:',pdfErr);
@@ -1571,10 +1603,10 @@ function showModal(fno,ftype,driveUrl,isUpdate){
     +'</div></div></div>';
 }
 
-function pdf(){
+async function pdf(){
   if(!_d){showCustomAlert('Form Baaki Hai','Pehle form submit karein!');return;}
   try{
-    var pdfB64=generatePDFDoc(_d);
+    var pdfB64=await generateAndMergePDF(_d);
     var a=document.createElement('a');
     a.href=pdfB64;
     var firmClean=cleanFirmName(_d.firmName);
@@ -2013,8 +2045,19 @@ function generatePDFDoc(d){
   doc.text(l3txt,pw/2,l3y,{align:'center'});
   if(EMOJI_PRAY_B64){try{doc.addImage(EMOJI_PRAY_B64,'PNG',l3startX+totalLine3W-emS,l3y-emYOffset,emS,emS);}catch(e){}}
 
-  if(typeof BANK_IMG_P2!=='undefined'&&BANK_IMG_P2&&isO){doc.addPage();try{doc.addImage(BANK_IMG_P2,'JPEG',0,0,210,297);}catch(e){}}
-  if(typeof BANK_IMG_P1!=='undefined'&&BANK_IMG_P1&&isO){doc.addPage();try{doc.addImage(BANK_IMG_P1,'JPEG',0,0,210,297);}catch(e){}}
+  var hasBank=typeof BANK_IMG_P2!=='undefined'&&BANK_IMG_P2;
+  var hasQR=typeof BANK_IMG_P1!=='undefined'&&BANK_IMG_P1;
+  if(isO&&(hasBank||hasQR)){
+    doc.addPage();
+    if(hasBank&&hasQR){
+      try{doc.addImage(BANK_IMG_P2,'JPEG',0,0,210,148.5);}catch(e){}
+      try{doc.addImage(BANK_IMG_P1,'JPEG',0,148.5,210,148.5);}catch(e){}
+    }else if(hasBank){
+      try{doc.addImage(BANK_IMG_P2,'JPEG',0,0,210,297);}catch(e){}
+    }else{
+      try{doc.addImage(BANK_IMG_P1,'JPEG',0,0,210,297);}catch(e){}
+    }
+  }
 
   return doc.output('datauristring');
 }
