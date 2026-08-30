@@ -58,6 +58,18 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
+  if (e.parameter.action === 'getBankPdf') {
+    try {
+      var file = DriveApp.getFileById('1YhLITPf0f066cwXzpKL6rHYSiLt9Ky2b');
+      var b64 = Utilities.base64Encode(file.getBlob().getBytes());
+      return ContentService.createTextOutput(JSON.stringify({ success: true, pdf: b64 }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } catch (driveErr) {
+      return ContentService.createTextOutput(JSON.stringify({ success: false, error: driveErr.message }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
   if (e.parameter.action === 'getTermsPdf') {
     try {
       var file = DriveApp.getFileById('1mX_relStgzUYqqRBB6RvN6NGHT7RXlW7');
