@@ -610,23 +610,52 @@ function processOrder(formData, timestamp) {
   var items = formData.items || [];
   if (!items.length) return { success: false, message: 'KOI ITEM NAHI MILA.' };
 
-  var built = buildOrderRowsAndSummary(formData, timestamp);
+  // These are assigned inside the lock and read outside (for PDF URL update).
+  var detailSheet, summarySheet, detailStartRow, summaryStartRow;
+  var grandTotal, netVal, gstSummary, freightSummary, totalDiscSummary, grossVal;
+  var detailHeadersLen, summaryHeadersLen;
 
-  var detailSheet  = getOrCreateSheet('Orders', built.detailHeaders);
-  var summarySheet = getOrCreateSheet('Orders_Summary', built.summaryHeaders);
+  // CRITICAL FIX: Form number must be generated at save time, under a lock
+  // that also covers the sheet write. The preview number the client sent is
+  // discarded — trusting it caused duplicates when two users had the form open
+  // simultaneously and both submitted with the same preview number.
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
 
-  var detailStartRow = detailSheet.getLastRow() + 1;
-  detailSheet.getRange(detailStartRow, 1, built.detailRows.length, built.detailHeaders.length)
-             .setValues(built.detailRows);
-  applyBatchRowFormat(detailSheet, detailStartRow, built.detailRows.length, built.detailHeaders.length);
+    var fy = getCurrentFY();
+    var maxSerial = scanMaxSerialFromSheet('Order', fy);
+    formData.formNumber = 'PI-SP/' + fy + '/' + String(maxSerial + 1).padStart(5, '0');
 
-  var summaryStartRow = summarySheet.getLastRow() + 1;
-  summarySheet.getRange(summaryStartRow, 1, 1, built.summaryHeaders.length)
-              .setValues([built.summaryRow]);
-  applyBatchRowFormat(summarySheet, summaryStartRow, 1, built.summaryHeaders.length);
+    var built = buildOrderRowsAndSummary(formData, timestamp);
+    grandTotal = built.grandTotal; netVal = built.netVal; gstSummary = built.gstSummary;
+    freightSummary = built.freightSummary; totalDiscSummary = built.totalDiscSummary; grossVal = built.grossVal;
+    detailHeadersLen = built.detailHeaders.length;
+    summaryHeadersLen = built.summaryHeaders.length;
 
-  bumpSerialCache('Order', formData.formNumber);
+    detailSheet  = getOrCreateSheet('Orders', built.detailHeaders);
+    summarySheet = getOrCreateSheet('Orders_Summary', built.summaryHeaders);
 
+    detailStartRow = detailSheet.getLastRow() + 1;
+    detailSheet.getRange(detailStartRow, 1, built.detailRows.length, detailHeadersLen)
+               .setValues(built.detailRows);
+    applyBatchRowFormat(detailSheet, detailStartRow, built.detailRows.length, detailHeadersLen);
+
+    summaryStartRow = summarySheet.getLastRow() + 1;
+    summarySheet.getRange(summaryStartRow, 1, 1, summaryHeadersLen)
+                .setValues([built.summaryRow]);
+    applyBatchRowFormat(summarySheet, summaryStartRow, 1, summaryHeadersLen);
+
+    bumpSerialCache('Order', formData.formNumber);
+
+  } catch(lockErr) {
+    Logger.log('processOrder error: ' + lockErr.message);
+    return { success: false, message: 'Server error: ' + lockErr.message };
+  } finally {
+    lock.releaseLock();
+  }
+
+  // PDF and WhatsApp are slow network calls — keep them outside the lock.
   var pdfUrl = '';
   try {
     if (formData.pdfBase64) {
@@ -642,8 +671,8 @@ function processOrder(formData, timestamp) {
       );
 
       if (pdfUrl) {
-        detailSheet.getRange(detailStartRow, built.detailHeaders.length).setValue(pdfUrl);
-        summarySheet.getRange(summaryStartRow, built.summaryHeaders.length).setValue(pdfUrl);
+        detailSheet.getRange(detailStartRow, detailHeadersLen).setValue(pdfUrl);
+        summarySheet.getRange(summaryStartRow, summaryHeadersLen).setValue(pdfUrl);
         Logger.log('PDF SAVED: ' + pdfUrl);
       }
     }
@@ -652,7 +681,7 @@ function processOrder(formData, timestamp) {
   }
 
   try {
-    sendWhatsAppOrder(formData, built.grandTotal, built.netVal, built.gstSummary, built.freightSummary, built.totalDiscSummary, built.grossVal, pdfUrl, false);
+    sendWhatsAppOrder(formData, grandTotal, netVal, gstSummary, freightSummary, totalDiscSummary, grossVal, pdfUrl, false);
   } catch(waErr) {
     Logger.log('WHATSAPP ERROR: ' + waErr.message);
   }
@@ -660,6 +689,7 @@ function processOrder(formData, timestamp) {
   return {
     success: true,
     message: 'ORDER SAVED! (' + items.length + ' ITEMS)',
+    formNumber: formData.formNumber,
     pdfUrl: pdfUrl
   };
 }
@@ -904,29 +934,29 @@ function processEnquiry(formData, timestamp) {
     'Remarks', 'Visiting Card Link', 'Shop Photo Link', 'Filled By (Name)', 'PDF URL'
   ];
 
-  var sheet = getOrCreateSheet('Enquiries', headers);
   var items = formData.items || [];
   if (!items.length) return { success: false, message: 'KOI ITEM NAHI MILA.' };
 
+  // Images saved before the lock — Drive calls are slow and don't affect serial numbers.
   var vcLink = '', shopLink = '';
   try {
+    var imgId = new Date().getTime();
     if (formData.visitingCardData)
       vcLink = saveBase64ToDrive(
         formData.visitingCardData,
-        (formData.formNumber||'ENQ').replace(/\//g,'-')+'_VC.jpg',
+        imgId + '_VC.jpg',
         'SP_Enquiry_Uploads'
       );
     if (formData.shopPhotoData)
       shopLink = saveBase64ToDrive(
         formData.shopPhotoData,
-        (formData.formNumber||'ENQ').replace(/\//g,'-')+'_Shop.jpg',
+        imgId + '_Shop.jpg',
         'SP_Enquiry_Uploads'
       );
   } catch(imgErr) {
     Logger.log('IMAGE ERROR: ' + imgErr.message);
   }
 
-  // Convert Enquiry Details to ALL CAPS
   var fmFirmName      = toAllCaps(formData.firmName);
   var fmGstNo         = toAllCaps(formData.gstNo);
   var fmArea          = toAllCaps(formData.areaName);
@@ -938,39 +968,61 @@ function processEnquiry(formData, timestamp) {
   var fmRemarks       = toAllCaps(formData.remarks || '');
   var fmEmail         = toAllCaps(formData.filledByEmail || '');
 
-  var allRows = [];
-  for (var i = 0; i < items.length; i++) {
-    var item = items[i];
-    var isFirst = (i === 0);
-    allRows.push([
-      timestamp,
-      formData.formNumber || '',
-      fmFirmName,
-      fmGstNo,
-      fmArea,
-      fmCustomer,
-      formData.whatsapp || '',
-      fmClientType,
-      fmClientSource,
-      fmReferenceName,
-      fmSalesPerson,
-      toAllCaps(item.name || ''),
-      parseFloat(item.ream) || 0,
-      item.box || 0,
-      parseFloat(item.rate) || 0,
-      isFirst ? fmRemarks : '',
-      isFirst ? vcLink   : '',
-      isFirst ? shopLink : '',
-      isFirst ? fmEmail : '',
-      ''
-    ]);
+  // These are assigned inside the lock and read outside (for PDF URL update).
+  var sheet, startRow;
+
+  // CRITICAL FIX: Same as processOrder — form number generated at save time
+  // under a lock that covers the entire sheet write, so two concurrent
+  // submissions can never get the same serial number.
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+
+    var fy = getCurrentFY();
+    var maxSerial = scanMaxSerialFromSheet('Enquiry', fy);
+    formData.formNumber = 'Enq-SP/' + fy + '/' + String(maxSerial + 1).padStart(5, '0');
+
+    var allRows = [];
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      var isFirst = (i === 0);
+      allRows.push([
+        timestamp,
+        formData.formNumber,
+        fmFirmName,
+        fmGstNo,
+        fmArea,
+        fmCustomer,
+        formData.whatsapp || '',
+        fmClientType,
+        fmClientSource,
+        fmReferenceName,
+        fmSalesPerson,
+        toAllCaps(item.name || ''),
+        parseFloat(item.ream) || 0,
+        item.box || 0,
+        parseFloat(item.rate) || 0,
+        isFirst ? fmRemarks : '',
+        isFirst ? vcLink   : '',
+        isFirst ? shopLink : '',
+        isFirst ? fmEmail : '',
+        ''
+      ]);
+    }
+
+    sheet = getOrCreateSheet('Enquiries', headers);
+    startRow = sheet.getLastRow() + 1;
+    sheet.getRange(startRow, 1, allRows.length, headers.length).setValues(allRows);
+    applyBatchRowFormat(sheet, startRow, allRows.length, headers.length);
+
+    bumpSerialCache('Enquiry', formData.formNumber);
+
+  } catch(lockErr) {
+    Logger.log('processEnquiry error: ' + lockErr.message);
+    return { success: false, message: 'Server error: ' + lockErr.message };
+  } finally {
+    lock.releaseLock();
   }
-
-  var startRow = sheet.getLastRow() + 1;
-  sheet.getRange(startRow, 1, allRows.length, headers.length).setValues(allRows);
-  applyBatchRowFormat(sheet, startRow, allRows.length, headers.length);
-
-  bumpSerialCache('Enquiry', formData.formNumber);
 
   var pdfUrl = '';
   try {
@@ -1004,6 +1056,7 @@ function processEnquiry(formData, timestamp) {
   return {
     success: true,
     message: 'ENQUIRY SAVED! (' + items.length + ' ITEMS)',
+    formNumber: formData.formNumber,
     pdfUrl: pdfUrl
   };
 }
