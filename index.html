@@ -1286,15 +1286,6 @@ async function sub(e){
     return;
   }
 
-  var dupCheck={},dupProducts=[];
-  items.forEach(function(it){var key=it.name.trim().toUpperCase();if(dupCheck[key]){if(dupProducts.indexOf(it.name)===-1)dupProducts.push(it.name);}else{dupCheck[key]=true;}});
-  if(dupProducts.length>0){
-    sMsg.className='sm er';
-    sMsg.textContent='Duplicate product: '+dupProducts.join(', ')+' — Ek product sirf ek baar add karein!';
-    sMsg.classList.remove('hd');
-    return;
-  }
-
   var firmNameVal=tp(document.getElementById('firmName').value);
   var gstVal=document.getElementById('gstNo').value.trim();
   if(!(await confirmAndRegisterNewFirm(firmNameVal,gstVal))){
