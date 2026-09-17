@@ -240,7 +240,7 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
       <div class="fld"><label class="lbl">GST No.</label><input class="inp inp-readonly" id="gstNo" placeholder="Auto-filled from firm" maxlength="15" style="text-transform:uppercase" readonly></div>
       <div class="fld"><label class="lbl">Area Name <span class="r">*</span></label><input class="inp" id="areaName" placeholder="Enter area name" required></div>
       <div class="fld"><label class="lbl">Customer Name <span class="r">*</span></label><input class="inp" id="custName" placeholder="Enter customer name" required></div>
-      <div class="fld"><label class="lbl">WhatsApp Mobile <span class="r">*</span></label><input class="inp" id="wap" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number" required oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
+      <div class="fld"><label class="lbl">Mobile No. <span class="r">*</span></label><input class="inp" id="wap" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number" required oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)"></div>
       <div class="fld"><label class="lbl">Form Filled By <span class="r">*</span></label><select class="sel" id="fillerName" required><option value="">&#8212; Select &#8212;</option></select></div>
       <div class="fld of"><label class="lbl">Sales Person <span class="r">*</span></label><select class="sel" id="sp1"><option value="">&#8212; Select &#8212;</option></select></div>
       <div class="fld of"><label class="lbl">Date of Order <span class="r">*</span></label><input class="inp" id="oDate" type="date"></div>
@@ -1598,8 +1598,7 @@ function showModal(fno,ftype,driveUrl,isUpdate){
     +'<div class="modal-title">'+(ftype==='Order'?'Order':'Enquiry')+' '+titleWord+'!</div>'
     +'<div class="modal-msg">'
     +'Form No: <strong>'+fno+'</strong><br>'
-    +'Successfully saved to Google Sheets.<br>'
-    +'<small style="color:#25D366;font-weight:700">&#10003; WhatsApp message sent automatically</small>'
+    +'Successfully saved to Google Sheets.'
     +'</div>'
     +'<div class="modal-actions">'
     +'<button class="modal-btn primary" onclick="document.getElementById(\'dlModal\').innerHTML=\'\';pdf()">&#128196; Download PDF</button>'
