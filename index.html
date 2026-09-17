@@ -956,6 +956,8 @@ function cancelModify(){
   gfn();
 }
 
+function setSelectVal(id,val){var sel=document.getElementById(id);if(!sel||!val)return;sel.value=val;if(sel.value===val)return;var u=val.trim().toUpperCase();for(var i=0;i<sel.options.length;i++){if(sel.options[i].value.trim().toUpperCase()===u||sel.options[i].textContent.trim().toUpperCase()===u){sel.value=sel.options[i].value;return;}}var nopt=document.createElement('option');nopt.value=val;nopt.textContent=val;sel.appendChild(nopt);sel.value=val;}
+
 function populateFormForModify(o){
   IS_UPDATE_MODE=true;
   MODIFY_ORIG_TIMESTAMP=o.timestamp||'';
@@ -972,11 +974,12 @@ function populateFormForModify(o){
   document.getElementById('areaName').value=o.areaName||'';
   document.getElementById('custName').value=o.customerName||'';
   document.getElementById('wap').value=o.whatsapp||'';
-  document.getElementById('sp1').value=o.salesPerson||'';
-  document.getElementById('oDate').value=o.orderDateISO||'';
-  document.getElementById('dDate').value=o.deliveryDateISO||'';
-  document.getElementById('cType').value=o.clientType||'';
-  document.getElementById('pTerms').value=o.paymentTerms||'';
+  setSelectVal('fillerName',o.filledByEmail||o.filledBy||o.formFilledBy||'');
+  setSelectVal('sp1',o.salesPerson||'');
+  document.getElementById('oDate').value=o.orderDateISO||o.orderDate||'';
+  document.getElementById('dDate').value=o.deliveryDateISO||o.deliveryDate||'';
+  setSelectVal('cType',o.clientType||'');
+  setSelectVal('pTerms',o.paymentTerms||'');
   tpd();
   document.getElementById('pDays').value=o.paymentDays||'';
 
@@ -1242,6 +1245,12 @@ async function confirmAndRegisterNewProduct(name){
 
 async function sub(e){
   e.preventDefault();
+  var sBtn=document.getElementById('sBtn');
+  if(sBtn.disabled)return;
+  sBtn.disabled=true;
+  document.getElementById('sTxt').textContent='Processing...';
+  document.getElementById('sSpn').classList.remove('hd');
+  try{
   var sMsg=document.getElementById('sMsg');
   var items=[];
   var valid=true;
@@ -1369,6 +1378,11 @@ async function sub(e){
 
   _d=d;
   showReview(d);
+  }finally{
+  sBtn.disabled=false;
+  document.getElementById('sTxt').textContent=IS_UPDATE_MODE?'Review & Update Order':'Review & Submit';
+  document.getElementById('sSpn').classList.add('hd');
+  }
 }
 
 function showReview(d){
@@ -1517,8 +1531,6 @@ function confirmSubmit(){
   btn.disabled=true;
   sTxt.textContent='Submitting...';
   sSpn.classList.remove('hd');
-
-  var d=_d;
 
   if(CT!=='Order'){
     var vcFile=document.getElementById('vcI').files[0];
