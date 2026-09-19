@@ -491,6 +491,7 @@ let CT='Order', FN='', _d=null, _submitting=false, IS_UPDATE_MODE=false, MODIFY_
 var _submittedFormNumbers={};
 (function(){try{var raw=localStorage.getItem('sp_submitted_orders');if(raw){var p=JSON.parse(raw),now=Date.now(),day=24*60*60*1000;Object.keys(p).forEach(function(k){if(now-p[k]<day)_submittedFormNumbers[k]=p[k];});}}catch(e){}})();
 function markFormSubmitted(fn){_submittedFormNumbers[fn]=Date.now();try{localStorage.setItem('sp_submitted_orders',JSON.stringify(_submittedFormNumbers));}catch(e){}}
+function unmarkFormSubmitted(fn){delete _submittedFormNumbers[fn];try{localStorage.setItem('sp_submitted_orders',JSON.stringify(_submittedFormNumbers));}catch(e){}}
 function isFormAlreadySubmitted(fn){return !!_submittedFormNumbers[fn];}
 window._firmData=[];
 window._firmDataLoaded=false;
@@ -1523,12 +1524,16 @@ function confirmSubmit(){
     return;
   }
   _submitting=true;
+  if(!d.isUpdate){
+    markFormSubmitted(d.formNumber);
+  }
   d.submissionId=Date.now().toString(36)+Math.random().toString(36).substr(2,9);
 
   var btn=document.getElementById('confirmBtn');
   var sTxt=document.getElementById('confirmTxt');
   var sSpn=document.getElementById('confirmSpn');
   btn.disabled=true;
+  btn.style.pointerEvents='none';
   sTxt.textContent='Submitting...';
   sSpn.classList.remove('hd');
 
@@ -1574,6 +1579,7 @@ function doSubmit(d,btn,sTxt,sSpn){
     .then(function(res){
       _submitting=false;
       btn.disabled=false;
+      btn.style.pointerEvents='auto';
       sTxt.textContent='✓ Confirm & Submit';
       sSpn.classList.add('hd');
       if(res.success){
@@ -1591,15 +1597,17 @@ function doSubmit(d,btn,sTxt,sSpn){
         document.getElementById('modStatus').textContent='';
         gfn();
       }else{
+        unmarkFormSubmitted(d.formNumber);
         showCustomAlert('Error','&#9888;&#65039; '+escHtml(res.message||'Error! Dobara try karein.'));
       }
     })
     .catch(function(err){
       _submitting=false;
       btn.disabled=false;
+      btn.style.pointerEvents='auto';
       sTxt.textContent='✓ Confirm & Submit';
       sSpn.classList.add('hd');
-      showCustomAlert('Server Error','&#9888;&#65039; '+escHtml(err.message)+'<br><br><strong>Note:</strong> Ho sakta hai order save ho gaya ho. Dobara submit karne se pehle Google Sheet me check kar lein.');
+      showCustomAlert('Network / Server Error','&#9888;&#65039; '+escHtml(err.message)+'<br><br><strong>Important Note:</strong> Response aane me time lag raha hai, par order backend me save ho gaya hoga.<br><br>Kripya <strong>dobara submit button par click NA KAREIN</strong>! Google Sheet me check kar lein.');
     });
   }
 
