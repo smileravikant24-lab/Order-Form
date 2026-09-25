@@ -750,11 +750,6 @@ function onFirmInput(val){
   var html=matches.length
     ? matches.map(function(f){return '<div class="fdi" onmousedown="selectFirm(\''+escHtml(f.name).replace(/'/g,"\\'")+'\')">'+escHtml(f.name)+'</div>';}).join('')
     : (q?'<div class="fdi-empty">No matching firm</div>':'');
-  var trimmedVal=(val||'').trim();
-  var exactKnown=trimmedVal&&firms.some(function(f){return f.name.trim().toUpperCase()===trimmedVal.toUpperCase();});
-  if(trimmedVal&&!exactKnown){
-    html+='<div class="fdi fdi-add" onmousedown="addNewFirmFromDropdown(\''+escHtml(trimmedVal).replace(/'/g,"\\'")+'\')">&#10133; "'+escHtml(trimmedVal)+'" ko <strong>naye party</strong> ke roop me add karein</div>';
-  }
   dd.innerHTML=html;
   dd.classList.add('show');
 }
@@ -763,32 +758,6 @@ function retryFirmLoad(e){
   lw();
   var dd=document.getElementById('firmDD');
   if(dd)dd.innerHTML='<div class="fdi-empty">Dobara try ho raha hai...</div>';
-}
-async function addNewFirmFromDropdown(name){
-  var gstField=document.getElementById('gstNo');
-  var gst=(gstField.value||'').trim().toUpperCase();
-  if(!gst){
-    while(true){
-      var enteredGst=await showCustomPrompt('GST Number','"'+escHtml(name)+'" ke liye GST No. daalein (15 character, khaali chhod sakte hain agar nahi hai):','text','',{maxLength:15,uppercase:true});
-      if(enteredGst===null)return;
-      enteredGst=enteredGst.trim().toUpperCase();
-      if(enteredGst&&enteredGst.length!==15){
-        await showCustomAlert('Galat GST No.','GST No. poore <strong>15 character</strong> ka hona chahiye.<br>Aapne '+enteredGst.length+' character diye hain.');
-        continue;
-      }
-      gst=enteredGst;
-      break;
-    }
-  }
-  if(!(await confirmAndRegisterNewFirm(name,gst)))return;
-  document.getElementById('firmName').value=name;
-  gstField.value=gst;
-  hideFirmDD();
-  var badgeWrap=document.getElementById('gstBadgeWrap');
-  if(gst){
-    document.getElementById('gstBadgeVal').textContent=gst;
-    badgeWrap.style.display='block';
-  }
 }
 function showProductDD(el){
   var dd=el.parentElement.querySelector('.firm-dd');
@@ -1210,21 +1179,16 @@ function cleanFirmName(name){
 
 function isKnownFirm(name){
   var upper=(name||'').trim().toUpperCase();
-  if(!upper)return true;
+  if(!upper)return false;
   var firms=window._firmData||[];
   return firms.some(function(f){return (f.name||'').trim().toUpperCase()===upper;});
 }
 async function confirmAndRegisterNewFirm(name,gst){
   var trimmedName=(name||'').trim();
-  if(!trimmedName||isKnownFirm(trimmedName))return true;
-  var ok1=await showCustomConfirm('Nayi Party?','"'+escHtml(trimmedName)+'" party master list me nahi mili.<br><br><strong>GST No:</strong> '+escHtml(gst||'(khaali)')+'<br><br>Kya yeh ek NAYI party hai?','Haan, Nayi Party Hai','Cancel');
-  if(!ok1)return false;
-  var ok2=await showCustomConfirm('Double-Check Karein','<strong>Party Name:</strong> '+escHtml(trimmedName)+'<br><strong>GST No:</strong> '+escHtml(gst||'(khaali)')+'<br><br>Yeh sahi hai? Confirm karne par master list me permanently add ho jayegi.','Haan, Sahi Hai','Cancel');
-  if(!ok2)return false;
-  window._firmData=window._firmData||[];
-  window._firmData.push({name:trimmedName.toUpperCase(),gst:(gst||'').toUpperCase()});
-  fetch(WEB_APP_URL+'?action=addNewFirm&name='+encodeURIComponent(trimmedName)+'&gst='+encodeURIComponent(gst||'')).catch(function(){});
-  return true;
+  if(!trimmedName)return false;
+  if(isKnownFirm(trimmedName))return true;
+  await showCustomAlert('Party List Me Nahi Hai','Party "'+escHtml(trimmedName)+'" master list me nahi hai.<br><br>Kripya dropdown list se hi sahi party select karein.');
+  return false;
 }
 function isKnownProduct(name){
   var upper=(name||'').trim().toUpperCase();
