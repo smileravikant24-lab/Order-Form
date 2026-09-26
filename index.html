@@ -501,6 +501,1297 @@ window._firmDataLoaded=false;
 // even if the network call to the backend fails or is slow. lw() will
 // still refresh this from the server list once it loads successfully.
 const FALLBACK_SALES_PERSONS=['MR. PAWAN NEGI','MR. PRANAV SATIJA','MR. MUKESH SHUKLA','MR. RISHABH JAIN','MR. SONU CHAUHAN'];
+const FALLBACK_FIRMS = [
+  {
+    "name": "(REG) PANDEY BOOK HOUSE",
+    "gst": ""
+  },
+  {
+    "name": "AAA VENTURES CONSULTANCY SERVICES PVT LTD (MOTIA KA",
+    "gst": ""
+  },
+  {
+    "name": "AADHUNIK OFFSET PRINTERS (SONEPAT)",
+    "gst": ""
+  },
+  {
+    "name": "AAKASH BOOK CENTRE (PATEL NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "AAKASH ELECTRONICS (KINGSWAY CAMP)",
+    "gst": ""
+  },
+  {
+    "name": "AAKASH PHOTOSTAT PATEL NAGAR",
+    "gst": ""
+  },
+  {
+    "name": "ABA ENTERPRISES",
+    "gst": ""
+  },
+  {
+    "name": "ADITI PAPERS (AGRA)",
+    "gst": ""
+  },
+  {
+    "name": "ADITYA COPIER (PATEL CHEST)",
+    "gst": ""
+  },
+  {
+    "name": "AGGARWAL BOOK DEPOT SADAR BAZAR GURGAON",
+    "gst": ""
+  },
+  {
+    "name": "AGGARWAL PHOTOSTAT DU",
+    "gst": ""
+  },
+  {
+    "name": "AGGARWAL SALES SIKAR RJ",
+    "gst": ""
+  },
+  {
+    "name": "AGGARWAL STATIONERY MART (DURGA PURI)",
+    "gst": ""
+  },
+  {
+    "name": "AGGARWAL TRADING COMPANY (RANI BAGH)",
+    "gst": ""
+  },
+  {
+    "name": "AGHAM ENTERPRISES",
+    "gst": ""
+  },
+  {
+    "name": "ALKA GUPTA & ASSOCIATES (NEHRU PLACE )",
+    "gst": ""
+  },
+  {
+    "name": "ALPHA PHOTOSTAT PATEL CHEST",
+    "gst": ""
+  },
+  {
+    "name": "AMRIT PHOTOSTAT GANDHI VIHAR",
+    "gst": ""
+  },
+  {
+    "name": "ANAMIKA PACKAGINGS",
+    "gst": ""
+  },
+  {
+    "name": "ANAND TRADERS (FARIDABAD)",
+    "gst": ""
+  },
+  {
+    "name": "ANISH PHOTOSTAT",
+    "gst": ""
+  },
+  {
+    "name": "ANKUR ENTERPRISES (CRISHTIAN COLONY)",
+    "gst": ""
+  },
+  {
+    "name": "ANMOL ENTERPRISES (TILAK NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "ANMOL PHOTOSTAT(SHIV SHAKTI)",
+    "gst": ""
+  },
+  {
+    "name": "APERIO INDIA PRIVATE LIMITED (MANGOLPURI KALAN)",
+    "gst": ""
+  },
+  {
+    "name": "ARUN THESIS (PATEL CHEST)",
+    "gst": ""
+  },
+  {
+    "name": "ARUSHI BOOK SHOP",
+    "gst": ""
+  },
+  {
+    "name": "ASHISH ENTERPRISES (GAUTAMBUDH NAGAR NOIDA)",
+    "gst": ""
+  },
+  {
+    "name": "ASHWANI ALIPUR",
+    "gst": ""
+  },
+  {
+    "name": "ASTHA COMMERCIAL CENTRE (VIKASHPURI)",
+    "gst": ""
+  },
+  {
+    "name": "ATUL PHOTOSTAT & BOOK CENTER (BADA BAZAR R.NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "ATUL PHOTOSTATE AND BOOKS (MUKHERJEE NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "AVDHESH NEHRU VIHAR",
+    "gst": ""
+  },
+  {
+    "name": "BABA PHOTOSTAT",
+    "gst": ""
+  },
+  {
+    "name": "BAJAJ COPY HOUSE (KRISHNA NAGAR JHEEL)",
+    "gst": ""
+  },
+  {
+    "name": "BAJAJ REPROGRAPHICS (SHAKARPUR)",
+    "gst": ""
+  },
+  {
+    "name": "BAJAJ STATIONERY MART (SHAKARPUR)",
+    "gst": ""
+  },
+  {
+    "name": "BALDEV SALES CORPORATION (AGRA )",
+    "gst": ""
+  },
+  {
+    "name": "BANSAL PAPER (ROHTAK)",
+    "gst": ""
+  },
+  {
+    "name": "BANSAL PAPER MUKHERJEE NAGAR",
+    "gst": ""
+  },
+  {
+    "name": "BANSAL SALES CORPORATION (SHAKARPUR)",
+    "gst": ""
+  },
+  {
+    "name": "BANSAL STATIONERS (GREEN PARK)",
+    "gst": ""
+  },
+  {
+    "name": "BHAGWATI BOOK STORE R NGR",
+    "gst": ""
+  },
+  {
+    "name": "BHUVAN TRADING  CO. (CLASSIC PRINTER) WAZIRABAD",
+    "gst": ""
+  },
+  {
+    "name": "BINDAL SALES AGENCY (TRI NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "BITOO M2K",
+    "gst": ""
+  },
+  {
+    "name": "BLESSINGS LOGISTICS SOLUTIONS LLP (GTB NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "BOOK CARE CENTRE VENTURE LLP (VYAPAR KENDRA)",
+    "gst": ""
+  },
+  {
+    "name": "BOOK GALARY BURARI",
+    "gst": ""
+  },
+  {
+    "name": "BOOK JUNCTION",
+    "gst": ""
+  },
+  {
+    "name": "BOOK WORLD",
+    "gst": ""
+  },
+  {
+    "name": "BUDANIYA BOOK SHOP",
+    "gst": ""
+  },
+  {
+    "name": "BUNTI PARMANAND COLONY",
+    "gst": ""
+  },
+  {
+    "name": "CA UNCLE",
+    "gst": ""
+  },
+  {
+    "name": "CASH SALE",
+    "gst": ""
+  },
+  {
+    "name": "CHAMAN PHOTOSTAT",
+    "gst": ""
+  },
+  {
+    "name": "CHANDAN PAPER AND CARDS (AZADPUR)",
+    "gst": ""
+  },
+  {
+    "name": "CHANDRIKA SOLUTIONS",
+    "gst": ""
+  },
+  {
+    "name": "CLASSIC BOOK SHOP (MOHALI)",
+    "gst": ""
+  },
+  {
+    "name": "CREATIVE SOLUTION WEST PATEL NAGAR",
+    "gst": ""
+  },
+  {
+    "name": "D K ENTERPRISES  MUKHERJEE NAGAR",
+    "gst": ""
+  },
+  {
+    "name": "D K PHOTOSTAT M NAGAR",
+    "gst": ""
+  },
+  {
+    "name": "D. RIKU TAZGI EXIM LLP (NAZAFGARH)",
+    "gst": ""
+  },
+  {
+    "name": "D.D.ENTERPRISES (OKHLA)",
+    "gst": ""
+  },
+  {
+    "name": "D.RIKU TAZGI EXIM LLP",
+    "gst": ""
+  },
+  {
+    "name": "DAULAT RAM COLLEGE",
+    "gst": ""
+  },
+  {
+    "name": "DB ENTERPRISES (BHILWARA)",
+    "gst": ""
+  },
+  {
+    "name": "DECIBEL BLUE ELECTRONICS ( BAWANA)",
+    "gst": ""
+  },
+  {
+    "name": "DEEPAK PHOTOSTAT M NAGAR",
+    "gst": ""
+  },
+  {
+    "name": "DEEPANSHU KHERA KALAN",
+    "gst": ""
+  },
+  {
+    "name": "DELBUS MOBILITY PVT LTD (SEEMAPURI)",
+    "gst": ""
+  },
+  {
+    "name": "DEORAJ MERTIYA & COMPANY ( JODHPUR R.J)",
+    "gst": ""
+  },
+  {
+    "name": "DES RAJ CHANAN LAL (KAROL BAGH)",
+    "gst": ""
+  },
+  {
+    "name": "DHANESH TRADING COMPANY (SHAHDARA) NEW",
+    "gst": ""
+  },
+  {
+    "name": "DIGITAL PHOTOSTAT (SARSWATI VIHAR) RAGHUDEEP",
+    "gst": ""
+  },
+  {
+    "name": "DIVIJA PAPER MART (KHERA KALAN)",
+    "gst": ""
+  },
+  {
+    "name": "DRISHTI BOOK SHOP",
+    "gst": ""
+  },
+  {
+    "name": "DSN KHANDELWAL TRADERS",
+    "gst": ""
+  },
+  {
+    "name": "DURGA STATIONERS AND PRINTERS",
+    "gst": ""
+  },
+  {
+    "name": "EAST DELHI STATIONERY MART",
+    "gst": ""
+  },
+  {
+    "name": "ECRATES TECHNOLOGY PVT LTD",
+    "gst": ""
+  },
+  {
+    "name": "EMARSONS (WAZIRPURI)",
+    "gst": ""
+  },
+  {
+    "name": "EMBASSY (MUKHERJEE NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "FRIENDS DOCUMENT CENTRE (PASCHIM VIHAR)",
+    "gst": ""
+  },
+  {
+    "name": "FRIENDS PRINTING CENTRE (JANAK PURI)",
+    "gst": ""
+  },
+  {
+    "name": "G.K PHOTOSTAT (GAMAN JI) JUNGPURA",
+    "gst": ""
+  },
+  {
+    "name": "GADGET BITE (MADIPUR)",
+    "gst": ""
+  },
+  {
+    "name": "GALAXY PIXEL PHARGANJ",
+    "gst": ""
+  },
+  {
+    "name": "GANESH PAPER MART (KOTLA)",
+    "gst": ""
+  },
+  {
+    "name": "GANESH PHOTOSTAT",
+    "gst": ""
+  },
+  {
+    "name": "GAUR STATIONERS SONIPAT",
+    "gst": ""
+  },
+  {
+    "name": "GAURAV PRINT N PACK (MUKHERJEE NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "GLOB CRAFTS",
+    "gst": ""
+  },
+  {
+    "name": "GOEL PAPER & PRINTS (AZADPUR)",
+    "gst": ""
+  },
+  {
+    "name": "GOEL PAPER MART (MALKAGANJ)",
+    "gst": ""
+  },
+  {
+    "name": "GOPSONS PAPERS PRIVATE LIMITED (NOIDA)",
+    "gst": ""
+  },
+  {
+    "name": "GOVIND TRADERS",
+    "gst": ""
+  },
+  {
+    "name": "GOYAL PAPER MALKAGANJ",
+    "gst": ""
+  },
+  {
+    "name": "GREEN RIDE LAXMI NAGAR",
+    "gst": ""
+  },
+  {
+    "name": "GS PHOTOSTAT",
+    "gst": ""
+  },
+  {
+    "name": "GS STATIONERY",
+    "gst": ""
+  },
+  {
+    "name": "GUGLANI BROTHERS (KINGSWAY CAMP)",
+    "gst": ""
+  },
+  {
+    "name": "GUPTA BOOK HOUSE JAHANGIR PURI",
+    "gst": ""
+  },
+  {
+    "name": "GUPTA STATIONERS (NEHRU PLACE)",
+    "gst": ""
+  },
+  {
+    "name": "GUPTA THESIS (DELHI UNIVERSITY)",
+    "gst": ""
+  },
+  {
+    "name": "HAPPY PHOTOSTAT NAJAFGARH",
+    "gst": ""
+  },
+  {
+    "name": "HARI OM GANDHI VIHAR",
+    "gst": ""
+  },
+  {
+    "name": "HI FI JANAKPURI",
+    "gst": ""
+  },
+  {
+    "name": "HI-FLY INFOTECH (MUKHERJEE NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "IMAGERUNNERS",
+    "gst": ""
+  },
+  {
+    "name": "INDIAN COPIERS SYSTEMS (SHER SINGH) (RAJENDAR NGR)",
+    "gst": ""
+  },
+  {
+    "name": "INSTITUTE OF ECONOMIC GROWTH (DELHI UNIVERSITY)",
+    "gst": ""
+  },
+  {
+    "name": "ISHWAR CHAND KHERA KALAN",
+    "gst": ""
+  },
+  {
+    "name": "IVAANA PAPERS (SHAKUR BASTI)",
+    "gst": ""
+  },
+  {
+    "name": "J.K. TRADERS AND PAPERS (FARIDABAD)",
+    "gst": ""
+  },
+  {
+    "name": "J.S TRADING CO. (TRI NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "JAI AMBEY PUBLICATION & PRINTING P.L (MUKHERJEE N.)",
+    "gst": ""
+  },
+  {
+    "name": "JAI GANESH PAPER MART (LAXMI NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "JAI OVERSEAS CHEMICAL LIMITED (MUNDKA)",
+    "gst": ""
+  },
+  {
+    "name": "JAI SAI MOTORS",
+    "gst": ""
+  },
+  {
+    "name": "JAISWAL PHOTOSTAT (MAYUR VIHAR)",
+    "gst": ""
+  },
+  {
+    "name": "JBN ENTERPRISES",
+    "gst": ""
+  },
+  {
+    "name": "JDA ELECTROSTATE (MOLANA AZAD)",
+    "gst": ""
+  },
+  {
+    "name": "JILEDAR BOOK SHOP (RAJENDAR NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "JINDAL SALES CORPORATION (JAHANGIRPURI)",
+    "gst": ""
+  },
+  {
+    "name": "JMD JAMAL GANDHI VIHAR",
+    "gst": ""
+  },
+  {
+    "name": "JOHNS CONVERT SCHOOL",
+    "gst": ""
+  },
+  {
+    "name": "JR PRINTS (JOLLY REPROGRAPHICS)",
+    "gst": ""
+  },
+  {
+    "name": "KAGAZ GHAR (PATEL NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "KAISER VITALS  ( HUNDSON LINE)",
+    "gst": ""
+  },
+  {
+    "name": "KALINDI COLLEGE KAROL BAGH",
+    "gst": ""
+  },
+  {
+    "name": "KALKA & CO. (NEHRU PLACE)",
+    "gst": ""
+  },
+  {
+    "name": "KAMLA ENTERPRISES (CHAWI BAZAR)",
+    "gst": ""
+  },
+  {
+    "name": "KAMLESH ENTERPRISES (GHAZIABAD)",
+    "gst": ""
+  },
+  {
+    "name": "KARTIK BOOK SHOP M NAGAR",
+    "gst": ""
+  },
+  {
+    "name": "KARTIK COMPUTER & STATIONERS (DARIYAGANJ)",
+    "gst": ""
+  },
+  {
+    "name": "KARTIK PHOT0STAT ASHOK NAGAR",
+    "gst": ""
+  },
+  {
+    "name": "KARZ AND DOLLS (KINGSWAY CAMP)",
+    "gst": ""
+  },
+  {
+    "name": "KASHVI ENTERPRISES (MODEL TOWN)",
+    "gst": ""
+  },
+  {
+    "name": "KBC NANO PUBLICATION PVT LTD ( RAJENDRA NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "KEI INDUSTRIES LTD (OKHLA)",
+    "gst": ""
+  },
+  {
+    "name": "KHANDELWAL BROS (MUNIRKA  VSNT KUNJ)",
+    "gst": ""
+  },
+  {
+    "name": "KIKI TRADERS (BABOLI)",
+    "gst": ""
+  },
+  {
+    "name": "KOHINOOR RIBBON FACTORY PVT LTD (MAYAPURI)",
+    "gst": ""
+  },
+  {
+    "name": "KRF MAYAPURI",
+    "gst": ""
+  },
+  {
+    "name": "KRISHNA ENTERPRISES",
+    "gst": ""
+  },
+  {
+    "name": "KUMAR BOOK SHOP PAPPU",
+    "gst": ""
+  },
+  {
+    "name": "LAB SALES CORPORATION (DARIYAGANJ)",
+    "gst": ""
+  },
+  {
+    "name": "LAW HOUSE WB",
+    "gst": ""
+  },
+  {
+    "name": "M C MITTAL TRADING COMPANY (ALIGARH)",
+    "gst": ""
+  },
+  {
+    "name": "M S ENTERPRISES (SARWATI VIHAR)",
+    "gst": ""
+  },
+  {
+    "name": "MAA MOBILE KHERA KALAN",
+    "gst": ""
+  },
+  {
+    "name": "MAHAVEER SERVICES",
+    "gst": ""
+  },
+  {
+    "name": "MALHOTRA PHOTOSTATE",
+    "gst": ""
+  },
+  {
+    "name": "MALIK ENTERPRISES (KIRTI NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "MALOTHRA PHOTOSTAT SARASWATI VIHAR",
+    "gst": ""
+  },
+  {
+    "name": "MANGLA PAPER MART (PALWAL H.R)",
+    "gst": ""
+  },
+  {
+    "name": "MARC ENTERPRISES PVT LTD (KUNDLI SONIPAT)",
+    "gst": ""
+  },
+  {
+    "name": "MARC ENTERPRISES PVT.LTD. (BADLI)",
+    "gst": ""
+  },
+  {
+    "name": "MEDIA GRAPHIC PRINTS",
+    "gst": ""
+  },
+  {
+    "name": "MITTAL PAPER & BOARD CO. (CHAWRI BZR)",
+    "gst": ""
+  },
+  {
+    "name": "MK INFOTECH",
+    "gst": ""
+  },
+  {
+    "name": "MK PRINTER (NARAINA)",
+    "gst": ""
+  },
+  {
+    "name": "MK PRINTERS SUPPLIER (GREATER KAILASH)",
+    "gst": ""
+  },
+  {
+    "name": "MKL EDUVENTURE PRIVATE LIMITED (NEHRU VIHAR)",
+    "gst": ""
+  },
+  {
+    "name": "ML PLASTIC PRODUCTS (SABAR BAZAR)",
+    "gst": ""
+  },
+  {
+    "name": "MLG POLYPLAST PVT. LTD (KARNAL GT ROAD)",
+    "gst": ""
+  },
+  {
+    "name": "MOHINDRA TRADING COMPANY",
+    "gst": ""
+  },
+  {
+    "name": "MOUNT CARMEL SCHOOL",
+    "gst": ""
+  },
+  {
+    "name": "MOUNT CARMEL SCHOOL (DWARKA)",
+    "gst": ""
+  },
+  {
+    "name": "MSK BUSINESS CENTRE (DWARKA)",
+    "gst": ""
+  },
+  {
+    "name": "MUKESH RATAN SETIA CO.",
+    "gst": ""
+  },
+  {
+    "name": "MULESH PRINTERS HOUSE (MEERUT CITY)",
+    "gst": ""
+  },
+  {
+    "name": "N.R STATIONERS ( MOTI NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "NALANDA PHOTOSTAT",
+    "gst": ""
+  },
+  {
+    "name": "NARAYAN POLYMERS (BAWANA IND.)",
+    "gst": ""
+  },
+  {
+    "name": "NATIONAL STATIONERS",
+    "gst": ""
+  },
+  {
+    "name": "NAV BHARAT DISTRIBUTORS (DHAKA VILLAGE)",
+    "gst": ""
+  },
+  {
+    "name": "NAV DURGA PAPERS (CHAWRI BAZAR)",
+    "gst": ""
+  },
+  {
+    "name": "NAVEEN CARDS AND STATIONERS (NEW) (GHAZIABAD)",
+    "gst": ""
+  },
+  {
+    "name": "NEW  HARYANA TRADERS (FARIDABAD)",
+    "gst": ""
+  },
+  {
+    "name": "NITIN PAPER SALES",
+    "gst": ""
+  },
+  {
+    "name": "NKN PRINT SOLUTION LLP (KALKA JI )",
+    "gst": ""
+  },
+  {
+    "name": "NUCLEUS BUSINESS SYSTEMS",
+    "gst": ""
+  },
+  {
+    "name": "OM AGENCIES ( TUGHLAKABAD)",
+    "gst": ""
+  },
+  {
+    "name": "OM BOOK NV SATENDER DADA",
+    "gst": ""
+  },
+  {
+    "name": "OM PHOTOSTAT WB SHUBHAM",
+    "gst": ""
+  },
+  {
+    "name": "OM SAI PHOTOCOPIER (LAXMI NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "PANDEY BOOK SHOP",
+    "gst": ""
+  },
+  {
+    "name": "PANDEY ENTERPRISE SOLUTIONS",
+    "gst": ""
+  },
+  {
+    "name": "PANKAJ ENTERPRISES (UTTAM NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "PAPER ART PRODUCTS",
+    "gst": ""
+  },
+  {
+    "name": "PAPER ELITE LAXMI NAGAR",
+    "gst": ""
+  },
+  {
+    "name": "PARAS PAPERS (MEERUT UP)",
+    "gst": ""
+  },
+  {
+    "name": "PAUL TRADING COMPANY (RAMESH NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "PNB BANK",
+    "gst": ""
+  },
+  {
+    "name": "PRADEEP HANSRAJ COLLEGE",
+    "gst": ""
+  },
+  {
+    "name": "PRADEEP SATYAWATI COLLEGE",
+    "gst": ""
+  },
+  {
+    "name": "PRAKASH BOOKS INDIA PVT.LTD (DARIYAGANJ)",
+    "gst": ""
+  },
+  {
+    "name": "PRAKASH PHOTOSTAT",
+    "gst": ""
+  },
+  {
+    "name": "PRAMOD PURT KHURD",
+    "gst": ""
+  },
+  {
+    "name": "PRASHANT ENTERPRISES (SURENDAR JI) PATEL CHEST",
+    "gst": ""
+  },
+  {
+    "name": "PRINCE COPIER (RAJENDAR NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "PRINT CENTRE DWARKA",
+    "gst": ""
+  },
+  {
+    "name": "PRINTOGRAPH PLUS (KINGSWAY CAMP)",
+    "gst": ""
+  },
+  {
+    "name": "PUNEET TRADERS SHASTRI NAGAR",
+    "gst": ""
+  },
+  {
+    "name": "PURVANCHAL PHOTOSTAT",
+    "gst": ""
+  },
+  {
+    "name": "PUSHPANJALI ENTERPIRSES (SONEPAT)",
+    "gst": ""
+  },
+  {
+    "name": "R K PLASTIC (MUBARK PUR)",
+    "gst": ""
+  },
+  {
+    "name": "R S ENTERPRISES",
+    "gst": ""
+  },
+  {
+    "name": "R.J BOOK SHOP",
+    "gst": ""
+  },
+  {
+    "name": "R.J.STATIONERS",
+    "gst": ""
+  },
+  {
+    "name": "R.N. AUTO COMPONENTS",
+    "gst": ""
+  },
+  {
+    "name": "RAGHAV BOOK SHOP",
+    "gst": ""
+  },
+  {
+    "name": "RAGHUDEEP ROHINI COURT",
+    "gst": ""
+  },
+  {
+    "name": "RAI  BOOK SHOP",
+    "gst": ""
+  },
+  {
+    "name": "RAJ STATIONERY MART (BHIWADI ALWAR)",
+    "gst": ""
+  },
+  {
+    "name": "RAJPUT PHOTOSTAT",
+    "gst": ""
+  },
+  {
+    "name": "RAJU CUTTING CHAWRI BAZAR",
+    "gst": ""
+  },
+  {
+    "name": "RAMESH BROTHERS (CHAWRI BAZAR)",
+    "gst": ""
+  },
+  {
+    "name": "REKHA STATIONERS (NAI SARAK)",
+    "gst": ""
+  },
+  {
+    "name": "RISHU BHAIYA",
+    "gst": ""
+  },
+  {
+    "name": "RUCHIKA BOOK SHOP & FASHION SPOT",
+    "gst": ""
+  },
+  {
+    "name": "RUCHIKA BOOK SHOP (CLOSE)",
+    "gst": ""
+  },
+  {
+    "name": "RUCHIRA PAPER MILL",
+    "gst": ""
+  },
+  {
+    "name": "RUDRA ENTERPRISES (PEERAGARHI)",
+    "gst": ""
+  },
+  {
+    "name": "S R GLOBAL KHERA",
+    "gst": ""
+  },
+  {
+    "name": "S S HOSPITALITY (DHAKA VILLAGE)",
+    "gst": ""
+  },
+  {
+    "name": "S T INTERNATIONAL",
+    "gst": ""
+  },
+  {
+    "name": "S.R. INTERNATIONAL (MOTI NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "S.R.ENTERPRISES (DILSHAD GARDEN)",
+    "gst": ""
+  },
+  {
+    "name": "SAARTHAK ENTERPRISES (ARUN RAJARAM)",
+    "gst": ""
+  },
+  {
+    "name": "SACHIN PHOTOSTAT",
+    "gst": ""
+  },
+  {
+    "name": "SACHIN SALES CORPORATION (PATEL NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "SAI PHOTOCOPIER (LAXMI NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "SAI PHOTOCOPY BENGALI MARKET",
+    "gst": ""
+  },
+  {
+    "name": "SAMRAJ STATIONERIE",
+    "gst": ""
+  },
+  {
+    "name": "SANAT PRINTERS  (KUNDLI SONEPAT)",
+    "gst": ""
+  },
+  {
+    "name": "SANDEEP STATIONERS (HUDSONLINE GTB NGR)",
+    "gst": ""
+  },
+  {
+    "name": "SANJAY PHOTOSTATE (PATEL NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "SANSKRITI IAS (MUKHERJEE NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "SAR INDUSTRIES (KUNDLI HR)",
+    "gst": ""
+  },
+  {
+    "name": "SARANSH (KINGSWAY CAMP)",
+    "gst": ""
+  },
+  {
+    "name": "SATISH LAXMI BAI COLLEGE",
+    "gst": ""
+  },
+  {
+    "name": "SEAMANS ENTERPRISES ( WAZIRABAD)",
+    "gst": ""
+  },
+  {
+    "name": "SEEMRAJ STATIONERS AND SERVICES (DHAKA VILG)",
+    "gst": ""
+  },
+  {
+    "name": "SETH FAQIR CHAND KARWA & CO.  JALANDHAR",
+    "gst": ""
+  },
+  {
+    "name": "SFCK JLD",
+    "gst": ""
+  },
+  {
+    "name": "SFCK LDH",
+    "gst": ""
+  },
+  {
+    "name": "SHAKTI TRADERS (NARAINA)",
+    "gst": ""
+  },
+  {
+    "name": "SHASHI SOLUTIONS (MANESAR)",
+    "gst": ""
+  },
+  {
+    "name": "SHIV PAPER & STATIONERY TRADERS (LAWRANCE RD)",
+    "gst": ""
+  },
+  {
+    "name": "SHIVA ENTERPRISES ( UTTAM NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "SHREE AMBEY ENTERPRISES",
+    "gst": ""
+  },
+  {
+    "name": "SHREE GANESH ENTERPRISES JIND HARYANA",
+    "gst": ""
+  },
+  {
+    "name": "SHREE IMAGERUNNERS (RAJENDAR NGR)",
+    "gst": ""
+  },
+  {
+    "name": "SHREE JI PAPER SALES ( NOIDA )",
+    "gst": ""
+  },
+  {
+    "name": "SHREE LAXMI BOOK SELLERS (SONEPAT)",
+    "gst": ""
+  },
+  {
+    "name": "SHREE SAI BOOK SHOP",
+    "gst": ""
+  },
+  {
+    "name": "SHREE UDYOG (WAZIRPUR INDUSTRIAL AREA)",
+    "gst": ""
+  },
+  {
+    "name": "SHRI BALAJI BOOK SHOP R NAGAR",
+    "gst": ""
+  },
+  {
+    "name": "SHRI BALAJI STATIONERS (KOTLA MUBARAKPR)",
+    "gst": ""
+  },
+  {
+    "name": "SHRI GANESH PAPER CARDS (BAHADURGARH)",
+    "gst": ""
+  },
+  {
+    "name": "SHRI KRISHNA ENTERPRISES",
+    "gst": ""
+  },
+  {
+    "name": "SHRI KRISHNA PAPER MART ( SHAHDARA)",
+    "gst": ""
+  },
+  {
+    "name": "SHRI MAHALAXMI STATIONERY MART (KOTLA MUBARKPUR)",
+    "gst": ""
+  },
+  {
+    "name": "SHRI SHYAM ENTERPRISESS",
+    "gst": ""
+  },
+  {
+    "name": "SHRINATH PAPERS (INDORE)",
+    "gst": ""
+  },
+  {
+    "name": "SHUBHAM STATIONERY",
+    "gst": ""
+  },
+  {
+    "name": "SIBHU KHERA KALAN",
+    "gst": ""
+  },
+  {
+    "name": "SIDDHARTHA SWITCHGEAR (CHANDNI CHOWK)",
+    "gst": ""
+  },
+  {
+    "name": "SIGMA ENTERPRISES",
+    "gst": ""
+  },
+  {
+    "name": "SKY INTERNATIONAL (JAWAHAR NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "SONIKA ENTERPRISES SWAROOP NAGAR",
+    "gst": ""
+  },
+  {
+    "name": "SONU RAJDHANI COLLEGE",
+    "gst": ""
+  },
+  {
+    "name": "SP ENTERPRISES  (FARIDABAD)",
+    "gst": ""
+  },
+  {
+    "name": "SPAR GEO INFRA PVT LTD (RING ROAD)",
+    "gst": ""
+  },
+  {
+    "name": "SPARKLE (RAJENDRA NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "SPM COLLEGE PUNJAB BAGH",
+    "gst": ""
+  },
+  {
+    "name": "SQUARE PAPER CORPORATION (VISWAS NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "SRI  PAL & COMPANY (CHAWRI BAZAR)",
+    "gst": ""
+  },
+  {
+    "name": "SS INDUSTRIES",
+    "gst": ""
+  },
+  {
+    "name": "STUDENT PHOTOSTAT M NAGAR",
+    "gst": ""
+  },
+  {
+    "name": "SUNFEEL INTERNATIONAL (CHANDNI CHOWK)",
+    "gst": ""
+  },
+  {
+    "name": "SUNPACK INDIA",
+    "gst": ""
+  },
+  {
+    "name": "SUNPACK PRANKIT INDIA  PVT LTD (JAMA MASJID)",
+    "gst": ""
+  },
+  {
+    "name": "SUPER PAPER PRODUCTS (KAROL BAGH)",
+    "gst": ""
+  },
+  {
+    "name": "SUPREME PAPER BAWANA",
+    "gst": ""
+  },
+  {
+    "name": "SUPREME PAPER PRODUCTS (BAWANA LAXMI NGR)",
+    "gst": ""
+  },
+  {
+    "name": "SURAJ PAPER (SONEPAT)",
+    "gst": ""
+  },
+  {
+    "name": "SURAJ PHOTOSTAT M NGR",
+    "gst": ""
+  },
+  {
+    "name": "SWAROOP PAPER AGENCY",
+    "gst": ""
+  },
+  {
+    "name": "SWASTIK CORRUGATORS & PACKERS LLP",
+    "gst": ""
+  },
+  {
+    "name": "TARIQ EXPORTS",
+    "gst": ""
+  },
+  {
+    "name": "TARUN BAJAJ",
+    "gst": ""
+  },
+  {
+    "name": "TATHASTUICS (RAJENDAR NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "THE GOD BLESS YOU  BAWANA",
+    "gst": ""
+  },
+  {
+    "name": "THE MOBILE OCEAN (WAZIRABAD)",
+    "gst": ""
+  },
+  {
+    "name": "THE NEW BOOK SHOP (MUKHERJEE NGR)",
+    "gst": ""
+  },
+  {
+    "name": "THE UMBRELLA STORE (NEHRU PLACE)",
+    "gst": ""
+  },
+  {
+    "name": "THOMSON PRESS INDIA PVT LTD 100% EOU (FARIDABAD)",
+    "gst": ""
+  },
+  {
+    "name": "TRIPAKSHA LITIGATION",
+    "gst": ""
+  },
+  {
+    "name": "TUBO PAPERS",
+    "gst": ""
+  },
+  {
+    "name": "UMESH GTB COLLEGE HOSPITAL",
+    "gst": ""
+  },
+  {
+    "name": "UNIVERSE INFOTECH (KAROL BAGH)",
+    "gst": ""
+  },
+  {
+    "name": "USHA STATIONERS (TILAK NAGAR)",
+    "gst": ""
+  },
+  {
+    "name": "UTTAM STATIONERY MART (NAI SARAK)",
+    "gst": ""
+  },
+  {
+    "name": "UTTRAKHAND BOOK DEPOT & STATIONERS",
+    "gst": ""
+  },
+  {
+    "name": "UTTRANCHAL STATIONERS  (KONDLI)",
+    "gst": ""
+  },
+  {
+    "name": "V D INTELLISYS TECHNOLOGIES PVT LTD (CAMP)",
+    "gst": ""
+  },
+  {
+    "name": "VAIKUNTHA INFORMATION TECHNOLOGIES (SANT NGR)",
+    "gst": ""
+  },
+  {
+    "name": "VARDAAN SALES CORPORATION (SHAKARPUR)",
+    "gst": ""
+  },
+  {
+    "name": "VARDHAN ENTERPRISES (SHAKARPUR)",
+    "gst": ""
+  },
+  {
+    "name": "VED ENTERPRISES (DWARKA )",
+    "gst": ""
+  },
+  {
+    "name": "VIJAY PHOTOSTATE PRINTOUT (RAJENDAR NGR)",
+    "gst": ""
+  },
+  {
+    "name": "VIKEL BUSINESS CORPORATION(PURCHASE)",
+    "gst": ""
+  },
+  {
+    "name": "VIKRAM JI SIRASPUR",
+    "gst": ""
+  },
+  {
+    "name": "VISHAL PAPERS  & STATIONERS (KANJHAWALA)",
+    "gst": ""
+  },
+  {
+    "name": "VISHAL STATIONERY MART",
+    "gst": ""
+  },
+  {
+    "name": "VRITI AGENCIES (CAMP)",
+    "gst": ""
+  },
+  {
+    "name": "WINLEXA ENTERPRISES",
+    "gst": ""
+  },
+  {
+    "name": "YOUNG OPTIMISTIC TRANSPORT SOLUTIONS PVT LTD",
+    "gst": ""
+  }
+];
+
 const FORM_FILLERS=['MR. PAWAN NEGI','MR. PRANAV SATIJA','MR. MUKESH SHUKLA','MR. RISHABH JAIN','MR. SONU CHAUHAN','MR. INDRESH','MS. POOJA'];
 function populateFormFillers(list){
   var s=document.getElementById('fillerName');
@@ -524,6 +1815,8 @@ function populateSalesPersons(list){
 }
 
 window.addEventListener('DOMContentLoaded',function(){
+  window._firmData = FALLBACK_FIRMS.slice();
+  window._firmDataLoaded = true;
   var today=new Date().toISOString().split('T')[0];
   document.getElementById('oDate').value=today;
   document.getElementById('dDate').min=today;
