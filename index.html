@@ -615,7 +615,22 @@ function fetchJsonRetry(url,options,attempts,delayMs){
 var INITIAL_DATA_CACHE_KEY='spInitialDataCache_v1';
 
 function applyInitialData(data){
-  window._firmData = data.firms || [];
+  window._firmData = (data.firms || []).map(function(f){
+    if(!f) return { name: '', gst: '', creditDays: '' };
+    if(Array.isArray(f)){
+      return {
+        name: f[0] ? String(f[0]).trim() : '',
+        gst: f[1] ? String(f[1]).trim() : '',
+        creditDays: f[2] !== undefined ? String(f[2]).trim() : ''
+      };
+    }
+    var cd = f.creditDays !== undefined ? f.creditDays : (f.credit_days !== undefined ? f.credit_days : (f.days !== undefined ? f.days : (f.cDays !== undefined ? f.cDays : (f.credit !== undefined ? f.credit : ''))));
+    return {
+      name: f.name ? String(f.name).trim() : '',
+      gst: f.gst ? String(f.gst).trim() : '',
+      creditDays: cd !== undefined && cd !== null ? String(cd).trim() : ''
+    };
+  });
   window._firmDataLoaded = true;
   var existingFirm = document.getElementById('firmName').value;
   if(existingFirm) autoFillGST(existingFirm);
@@ -806,15 +821,44 @@ function autoFillGST(firmName){
   var gstField=document.getElementById('gstNo');
   var badgeWrap=document.getElementById('gstBadgeWrap');
   var badgeVal=document.getElementById('gstBadgeVal');
+  var pTermsEl=document.getElementById('pTerms');
+  var pDaysEl=document.getElementById('pDays');
+  var pdF=document.getElementById('pdF');
+
   if(!gstField||!firmName||!firmName.trim())return;
   var firms=window._firmData||[];
   var val=firmName.trim().toLowerCase();
-  var match=firms.find(function(f){return f.name.trim().toLowerCase()===val;});
-  if(!match){match=firms.find(function(f){return f.name.trim().toLowerCase().startsWith(val);});}
+  var match=firms.find(function(f){return (f.name||'').trim().toLowerCase()===val;});
+  if(!match){match=firms.find(function(f){return (f.name||'').trim().toLowerCase().startsWith(val);});}
   if(match){
     gstField.value=match.gst||'';
-    if(match.gst){badgeVal.textContent=match.gst;badgeWrap.style.display='block';}
-    else{badgeWrap.style.display='none';}
+    if(match.gst && match.gst!=='-'){
+      badgeVal.textContent=match.gst;
+      badgeWrap.style.display='block';
+    } else {
+      badgeWrap.style.display='none';
+    }
+
+    // Auto-fill Credit Days / Payment Terms from Column C
+    var cdRaw = match.creditDays;
+    if(cdRaw !== undefined && cdRaw !== null && String(cdRaw).trim() !== ''){
+      var cdStr = String(cdRaw).trim();
+      var cdNum = parseFloat(cdStr);
+      if(cdStr === '0' || cdNum === 0){
+        // 0 means Advance Payment
+        if(pTermsEl) pTermsEl.value = 'Advance Payment';
+        if(pdF) pdF.classList.add('hd');
+        if(pDaysEl) pDaysEl.value = '';
+      } else if(!isNaN(cdNum) && cdNum > 0){
+        // Positive number means Credit Days
+        if(pTermsEl) pTermsEl.value = 'Credit Days';
+        if(pdF) pdF.classList.remove('hd');
+        if(pDaysEl){
+          pDaysEl.value = cdNum;
+          pDaysEl.readOnly = false; // Editable by user
+        }
+      }
+    }
   }else{
     gstField.value='';
     badgeWrap.style.display='none';
@@ -1288,6 +1332,20 @@ async function sub(e){
       document.getElementById('sp1').focus();
       return;
     }
+    if(!document.getElementById('pTerms').value){
+      sMsg.className='sm er';
+      sMsg.textContent='Payment Terms chunna zaroori hai!';
+      sMsg.classList.remove('hd');
+      document.getElementById('pTerms').focus();
+      return;
+    }
+    if(document.getElementById('pTerms').value==='Credit Days'&&!document.getElementById('pDays').value){
+      sMsg.className='sm er';
+      sMsg.textContent='Credit Days daalna zaroori hai!';
+      sMsg.classList.remove('hd');
+      document.getElementById('pDays').focus();
+      return;
+    }
     if(!document.querySelector('input[name="tm"]:checked')){
       sMsg.className='sm er';
       sMsg.textContent='LBP ya FOR transport mode chunna zaroori hai!';
@@ -1547,11 +1605,15 @@ function doSubmit(d,btn,sTxt,sSpn){
       sTxt.textContent='✓ Confirm & Submit';
       sSpn.classList.add('hd');
       if(res.success){
-        markFormSubmitted(d.formNumber);
+        var savedFno = res.formNumber || res.piNo || res.orderNumber || res.fno || d.formNumber;
+        d.formNumber = savedFno;
+        if(_d) _d.formNumber = savedFno;
+        FN = savedFno;
+        markFormSubmitted(savedFno);
         var driveUrl=res.pdfUrl||'';
-        if(driveUrl)_d.driveUrl=driveUrl;
+        if(driveUrl && _d)_d.driveUrl=driveUrl;
         document.getElementById('reviewView').classList.add('hd');
-        showModal(d.formNumber,d.formType||CT,driveUrl,d.isUpdate);
+        showModal(savedFno,d.formType||CT,driveUrl,d.isUpdate);
         sr(d,driveUrl);
         IS_UPDATE_MODE=false;
         MODIFY_ORIG_TIMESTAMP='';
