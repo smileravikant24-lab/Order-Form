@@ -612,7 +612,7 @@ function fetchJsonRetry(url,options,attempts,delayMs){
   });
 }
 
-var INITIAL_DATA_CACHE_KEY='spInitialDataCache_v1';
+var INITIAL_DATA_CACHE_KEY='spInitialDataCache_v2';
 
 function applyInitialData(data){
   window._firmData = (data.firms || []).map(function(f){
@@ -767,6 +767,11 @@ function onFirmInput(val){
     : (q?'<div class="fdi-empty">No matching firm</div>':'');
   dd.innerHTML=html;
   dd.classList.add('show');
+
+  if(q){
+    var exact=firms.find(function(f){return (f.name||'').trim().toLowerCase()===q;});
+    if(exact) autoFillGST(exact.name);
+  }
 }
 function retryFirmLoad(e){
   if(e)e.stopPropagation();
