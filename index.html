@@ -612,7 +612,7 @@ function fetchJsonRetry(url,options,attempts,delayMs){
   });
 }
 
-var INITIAL_DATA_CACHE_KEY='spInitialDataCache_v2';
+var INITIAL_DATA_CACHE_KEY='spInitialDataCache_v3';
 
 function applyInitialData(data){
   window._firmData = (data.firms || []).map(function(f){
@@ -1546,14 +1546,7 @@ function confirmSubmit(){
   if(_submitting)return;
   var d=_d;
   if(!d)return;
-  if(!d.isUpdate&&isFormAlreadySubmitted(d.formNumber)){
-    showCustomAlert('Duplicate Entry Blocked!','Form No. <strong>'+escHtml(d.formNumber)+'</strong> pehle se submit ho chuka hai!<br><br>Naya order ke liye <strong>"New Entry"</strong> button dabayein.<br>Purana order edit karne ke liye <strong>"Modify Existing Order"</strong> use karein.');
-    return;
-  }
   _submitting=true;
-  if(!d.isUpdate){
-    markFormSubmitted(d.formNumber);
-  }
   d.submissionId=Date.now().toString(36)+Math.random().toString(36).substr(2,9);
 
   var btn=document.getElementById('confirmBtn');
