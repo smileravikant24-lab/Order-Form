@@ -1635,15 +1635,13 @@ function doSubmit(d,btn,sTxt,sSpn){
     });
   }
 
-  setTimeout(async function(){
-    try{
-      var pdfB64=await generateAndMergePDF(d);
-      submitToServer(pdfB64);
-    }catch(pdfErr){
-      console.error('PDF gen error:',pdfErr);
-      submitToServer('');
-    }
-  },0);
+  try{
+    var fastPdfB64 = generatePDFDoc(d);
+    submitToServer(fastPdfB64);
+  }catch(pdfErr){
+    console.error('PDF gen error:', pdfErr);
+    submitToServer('');
+  }
 }
 
 function showModal(fno,ftype,driveUrl,isUpdate){
