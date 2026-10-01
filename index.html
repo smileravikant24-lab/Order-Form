@@ -449,7 +449,7 @@ const SALES_EMAIL_MAP = {
   'MR. MUKESH SHUKLA' : 'mukesh.shukla@satijapaper.com',
   'MR. RISHABH JAIN'  : 'rishabhsatijapaper@gmail.com',
   'MR. SONU CHAUHAN'  : 'sonusatijapaper@gmail.com',
-  'DA DD'  : '     -    '
+  'DA DD'             : ''
 };
 
 function getSalesEmail(name) {
@@ -501,7 +501,7 @@ window._firmDataLoaded=false;
 // cross-origin) getInitialData fetch — so Sales Person is never empty
 // even if the network call to the backend fails or is slow. lw() will
 // still refresh this from the server list once it loads successfully.
-const FALLBACK_SALES_PERSONS=['MR. PAWAN NEGI','MR. PRANAV SATIJA','MR. MUKESH SHUKLA','MR. RISHABH JAIN','MR. SONU CHAUHAN'];
+const FALLBACK_SALES_PERSONS=['MR. PAWAN NEGI','MR. PRANAV SATIJA','MR. MUKESH SHUKLA','MR. RISHABH JAIN','MR. SONU CHAUHAN','DA DD'];
 const FORM_FILLERS=['MR. PAWAN NEGI','MR. PRANAV SATIJA','MR. MUKESH SHUKLA','MR. RISHABH JAIN','MR. SONU CHAUHAN','MR. INDRESH','MS. POOJA'];
 function populateFormFillers(list){
   var s=document.getElementById('fillerName');
@@ -636,7 +636,9 @@ function applyInitialData(data){
   var existingFirm = document.getElementById('firmName').value;
   if(existingFirm) autoFillGST(existingFirm);
 
-  populateSalesPersons((data.salesPersons&&data.salesPersons.length)?data.salesPersons:FALLBACK_SALES_PERSONS);
+  var _spList=((data.salesPersons&&data.salesPersons.length)?data.salesPersons:FALLBACK_SALES_PERSONS).slice();
+  if(_spList.indexOf('DA DD')===-1)_spList.push('DA DD');
+  populateSalesPersons(_spList);
 
   window._productData = data.products || [];
   (data.products || []).forEach(function(p){
