@@ -246,8 +246,19 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
       <div class="fld of"><label class="lbl">Date of Order <span class="r">*</span></label><input class="inp" id="oDate" type="date"></div>
       <div class="fld of"><label class="lbl">Date of Delivery</label><input class="inp" id="dDate" type="date"></div>
       <div class="fld of"><label class="lbl">Client Type <span class="r">*</span></label><select class="sel" id="cType" onchange="onOrderClientTypeChange()"><option value="">&#8212; Select &#8212;</option><option>New</option><option>Existing</option></select></div>
-      <div class="fld of"><label class="lbl">Payment Terms <span class="r">*</span></label><select class="sel" id="pTerms" onchange="tpd()"><option value="">&#8212; Select &#8212;</option><option>Advance Payment</option><option value="Credit Days">Credit Days</option></select></div>
-      <div class="fld of hd" id="pdF"><label class="lbl">Payment Days <span class="r">*</span></label><input class="inp" id="pDays" type="number" min="1" placeholder="Number of days"></div>
+      <div class="fld of">
+        <label class="lbl">Payment Terms <span class="r">*</span></label>
+        <select class="sel" id="pTerms" onchange="tpd()">
+          <option value="">&#8212; Select &#8212;</option>
+          <option>Advance Payment</option>
+          <option value="Credit Days">Credit Days</option>
+        </select>
+        <div id="creditDaysStatusBadge" style="display:none; font-size:11px; font-weight:700; margin-top:5px; padding:3px 8px; border-radius:6px; background:#e8f5e9; border:1px solid #c8e6c9; color:#1b5e20;"></div>
+      </div>
+      <div class="fld of hd" id="pdF">
+        <label class="lbl">Payment Days <span class="r">*</span></label>
+        <input class="inp" id="pDays" type="number" min="1" placeholder="Number of days" oninput="onPaymentDaysInput()" onchange="onPaymentDaysChange()">
+      </div>
       <div class="fld ef hd"><label class="lbl">Sales Person</label><select class="sel" id="sp2"><option value="">&#8212; Select &#8212;</option></select></div>
       <div class="fld ef hd"><label class="lbl">Client Type <span class="r">*</span></label><select class="sel" id="eCType" onchange="onEnquiryClientTypeChange()"><option value="">&#8212; Select &#8212;</option><option>New</option><option>Existing</option></select></div>
       <div class="fld ef hd"><label class="lbl">Client Source <span class="r">*</span></label>
@@ -614,24 +625,168 @@ function fetchJsonRetry(url,options,attempts,delayMs){
 }
 
 var INITIAL_DATA_CACHE_KEY='spInitialDataCache_v3';
+var FIRM_CREDIT_OVERRIDES_KEY='sp_firm_credit_overrides';
+
+function getFirmCreditOverrides(){
+  try{
+    var raw=localStorage.getItem(FIRM_CREDIT_OVERRIDES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  }catch(e){
+    return {};
+  }
+}
+
+function updateCreditDaysUIBadge(firmName, cdStr, termsVal, isUserOverride){
+  var badge = document.getElementById('creditDaysStatusBadge');
+  if(!badge) return;
+  if(!firmName || !firmName.trim()){
+    badge.style.display = 'none';
+    return;
+  }
+  var isAdvance = termsVal === 'Advance Payment' || cdStr === '0' || cdStr === '';
+  badge.style.display = 'block';
+  if(isUserOverride){
+    badge.style.background = '#e8f5e9';
+    badge.style.color = '#1b5e20';
+    badge.style.borderColor = '#a5d6a7';
+    badge.innerHTML = isAdvance
+      ? '⚡ <strong>Dynamic Override:</strong> Advance Payment (0 Days) saved for ' + escHtml(firmName)
+      : '⚡ <strong>Dynamic Override:</strong> ' + escHtml(cdStr) + ' Credit Days saved for ' + escHtml(firmName);
+  } else {
+    badge.style.background = '#f0f5ec';
+    badge.style.color = '#5a6b5a';
+    badge.style.borderColor = '#d4ddd0';
+    badge.innerHTML = isAdvance
+      ? '✓ Master Data: Advance Payment'
+      : '✓ Master Data: ' + escHtml(cdStr) + ' Credit Days';
+  }
+}
+
+function saveFirmCreditOverride(firmName, creditDaysVal, termsVal){
+  if(!firmName || !firmName.trim()) return;
+  var norm = firmName.trim().toLowerCase();
+  var overrides = getFirmCreditOverrides();
+  var cdStr = creditDaysVal !== undefined && creditDaysVal !== null ? String(creditDaysVal).trim() : '';
+
+  overrides[norm] = {
+    creditDays: cdStr,
+    paymentTerms: termsVal || (cdStr === '0' || cdStr === '' ? 'Advance Payment' : 'Credit Days'),
+    firmName: firmName.trim(),
+    updatedAt: Date.now()
+  };
+
+  try{
+    localStorage.setItem(FIRM_CREDIT_OVERRIDES_KEY, JSON.stringify(overrides));
+  }catch(e){}
+
+  // 1. Update in-memory window._firmData
+  if(window._firmData && Array.isArray(window._firmData)){
+    var found = false;
+    window._firmData.forEach(function(f){
+      if((f.name || '').trim().toLowerCase() === norm){
+        f.creditDays = cdStr;
+        found = true;
+      }
+    });
+    if(!found){
+      var gstField = document.getElementById('gstNo');
+      window._firmData.push({
+        name: firmName.trim(),
+        gst: gstField ? (gstField.value || '') : '',
+        creditDays: cdStr
+      });
+    }
+  }
+
+  // 2. Update cached initial data
+  try{
+    var rawCache = localStorage.getItem(INITIAL_DATA_CACHE_KEY);
+    if(rawCache){
+      var parsedCache = JSON.parse(rawCache);
+      if(parsedCache && parsedCache.data && Array.isArray(parsedCache.data.firms)){
+        var cFound = false;
+        parsedCache.data.firms.forEach(function(cf){
+          var cName = (Array.isArray(cf) ? cf[0] : cf.name) || '';
+          if(String(cName).trim().toLowerCase() === norm){
+            if(Array.isArray(cf)) cf[2] = cdStr;
+            else cf.creditDays = cdStr;
+            cFound = true;
+          }
+        });
+        if(!cFound){
+          parsedCache.data.firms.push({
+            name: firmName.trim(),
+            gst: document.getElementById('gstNo') ? document.getElementById('gstNo').value : '',
+            creditDays: cdStr
+          });
+        }
+        localStorage.setItem(INITIAL_DATA_CACHE_KEY, JSON.stringify(parsedCache));
+      }
+    }
+  }catch(e){}
+
+  // 3. Notify backend asynchronously
+  try{
+    fetch(WEB_APP_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify({
+        action: 'updateCreditDays',
+        firmName: firmName.trim(),
+        creditDays: cdStr,
+        paymentTerms: termsVal || (cdStr === '0' || cdStr === '' ? 'Advance Payment' : 'Credit Days')
+      })
+    }).catch(function(){});
+  }catch(e){}
+
+  updateCreditDaysUIBadge(firmName, cdStr, termsVal, true);
+}
 
 function applyInitialData(data){
+  var overrides = getFirmCreditOverrides();
   window._firmData = (data.firms || []).map(function(f){
     if(!f) return { name: '', gst: '', creditDays: '' };
+    var nameVal = '';
+    var gstVal = '';
+    var cdVal = '';
     if(Array.isArray(f)){
-      return {
-        name: f[0] ? String(f[0]).trim() : '',
-        gst: f[1] ? String(f[1]).trim() : '',
-        creditDays: f[2] !== undefined ? String(f[2]).trim() : ''
-      };
+      nameVal = f[0] ? String(f[0]).trim() : '';
+      gstVal = f[1] ? String(f[1]).trim() : '';
+      cdVal = f[2] !== undefined ? String(f[2]).trim() : '';
+    } else {
+      nameVal = f.name ? String(f.name).trim() : '';
+      gstVal = f.gst ? String(f.gst).trim() : '';
+      var cd = f.creditDays !== undefined ? f.creditDays : (f.credit_days !== undefined ? f.credit_days : (f.days !== undefined ? f.days : (f.cDays !== undefined ? f.cDays : (f.credit !== undefined ? f.credit : ''))));
+      cdVal = cd !== undefined && cd !== null ? String(cd).trim() : '';
     }
-    var cd = f.creditDays !== undefined ? f.creditDays : (f.credit_days !== undefined ? f.credit_days : (f.days !== undefined ? f.days : (f.cDays !== undefined ? f.cDays : (f.credit !== undefined ? f.credit : ''))));
+
+    // Apply persistent user override if present
+    var norm = nameVal.trim().toLowerCase();
+    if(overrides[norm] !== undefined && overrides[norm].creditDays !== undefined){
+      cdVal = overrides[norm].creditDays;
+    }
+
     return {
-      name: f.name ? String(f.name).trim() : '',
-      gst: f.gst ? String(f.gst).trim() : '',
-      creditDays: cd !== undefined && cd !== null ? String(cd).trim() : ''
+      name: nameVal,
+      gst: gstVal,
+      creditDays: cdVal
     };
   });
+
+  // Include any new firms that exist in overrides but not yet in backend firms
+  Object.keys(overrides).forEach(function(normKey){
+    var exists = window._firmData.some(function(f){
+      return (f.name || '').trim().toLowerCase() === normKey;
+    });
+    if(!exists && overrides[normKey].firmName){
+      window._firmData.push({
+        name: overrides[normKey].firmName,
+        gst: '',
+        creditDays: overrides[normKey].creditDays || ''
+      });
+    }
+  });
+
   window._firmDataLoaded = true;
   var existingFirm = document.getElementById('firmName').value;
   if(existingFirm) autoFillGST(existingFirm);
@@ -832,8 +987,12 @@ function autoFillGST(firmName){
   var pTermsEl=document.getElementById('pTerms');
   var pDaysEl=document.getElementById('pDays');
   var pdF=document.getElementById('pdF');
+  var badge=document.getElementById('creditDaysStatusBadge');
 
-  if(!gstField||!firmName||!firmName.trim())return;
+  if(!gstField||!firmName||!firmName.trim()){
+    if(badge) badge.style.display='none';
+    return;
+  }
   var firms=window._firmData||[];
   var val=firmName.trim().toLowerCase();
   var match=firms.find(function(f){return (f.name||'').trim().toLowerCase()===val;});
@@ -847,7 +1006,10 @@ function autoFillGST(firmName){
       badgeWrap.style.display='none';
     }
 
-    // Auto-fill Credit Days / Payment Terms from Column C
+    var overrides=getFirmCreditOverrides();
+    var hasOverride=overrides[val]!==undefined && overrides[val].creditDays!==undefined;
+
+    // Auto-fill Credit Days / Payment Terms from Column C or User Override
     var cdRaw = match.creditDays;
     if(cdRaw !== undefined && cdRaw !== null && String(cdRaw).trim() !== ''){
       var cdStr = String(cdRaw).trim();
@@ -857,6 +1019,7 @@ function autoFillGST(firmName){
         if(pTermsEl) pTermsEl.value = 'Advance Payment';
         if(pdF) pdF.classList.add('hd');
         if(pDaysEl) pDaysEl.value = '';
+        updateCreditDaysUIBadge(match.name, '0', 'Advance Payment', hasOverride);
       } else if(!isNaN(cdNum) && cdNum > 0){
         // Positive number means Credit Days
         if(pTermsEl) pTermsEl.value = 'Credit Days';
@@ -865,11 +1028,15 @@ function autoFillGST(firmName){
           pDaysEl.value = cdNum;
           pDaysEl.readOnly = false; // Editable by user
         }
+        updateCreditDaysUIBadge(match.name, cdNum, 'Credit Days', hasOverride);
       }
+    } else {
+      if(badge) badge.style.display='none';
     }
   }else{
     gstField.value='';
     badgeWrap.style.display='none';
+    if(badge) badge.style.display='none';
   }
 }
 
@@ -1179,8 +1346,48 @@ function st(mode){
 function tpd(){
   var v=document.getElementById('pTerms').value;
   var pf=document.getElementById('pdF');
+  var pDaysEl=document.getElementById('pDays');
   pf.classList.toggle('hd',v!=='Credit Days');
-  if(v!=='Credit Days')document.getElementById('pDays').value='';
+  var firmName=(document.getElementById('firmName').value||'').trim();
+
+  if(v==='Advance Payment'){
+    pDaysEl.value='';
+    if(firmName){
+      saveFirmCreditOverride(firmName, '0', 'Advance Payment');
+    }
+  } else if(v==='Credit Days'){
+    if(firmName && pDaysEl.value){
+      saveFirmCreditOverride(firmName, pDaysEl.value, 'Credit Days');
+    } else if(firmName){
+      var firms=window._firmData||[];
+      var norm=firmName.toLowerCase();
+      var match=firms.find(function(f){return (f.name||'').trim().toLowerCase()===norm;});
+      if(match && match.creditDays && parseFloat(match.creditDays)>0){
+        pDaysEl.value=match.creditDays;
+        saveFirmCreditOverride(firmName, match.creditDays, 'Credit Days');
+      }
+    }
+  } else {
+    var badge=document.getElementById('creditDaysStatusBadge');
+    if(badge) badge.style.display='none';
+  }
+}
+
+function onPaymentDaysInput(){
+  var pDaysEl=document.getElementById('pDays');
+  var pTermsEl=document.getElementById('pTerms');
+  var firmName=(document.getElementById('firmName').value||'').trim();
+  if(!firmName) return;
+  if(pTermsEl.value==='Credit Days' && pDaysEl.value!==''){
+    var days=parseFloat(pDaysEl.value);
+    if(!isNaN(days) && days>=0){
+      saveFirmCreditOverride(firmName, String(days), 'Credit Days');
+    }
+  }
+}
+
+function onPaymentDaysChange(){
+  onPaymentDaysInput();
 }
 
 function checkRef(){
@@ -1389,6 +1596,10 @@ async function sub(e){
     d.clientType=document.getElementById('cType').value;
     d.paymentTerms=document.getElementById('pTerms').value;
     d.paymentDays=document.getElementById('pDays').value;
+    d.creditDays=d.paymentTerms==='Credit Days'?(d.paymentDays||'0'):'0';
+    if(firmNameVal){
+      saveFirmCreditOverride(firmNameVal, d.creditDays, d.paymentTerms);
+    }
     var tmRadio=document.querySelector('input[name="tm"]:checked');
     d.transportMode=tmRadio?tmRadio.value:'';
     d.transportName=document.getElementById('tN').value.trim();
@@ -2124,6 +2335,10 @@ function rst(){
   document.getElementById('ic').innerHTML='';
   document.getElementById('gstNo').value='';
   document.getElementById('gstBadgeWrap').style.display='none';
+  var cBadge=document.getElementById('creditDaysStatusBadge');
+  if(cBadge) cBadge.style.display='none';
+  document.getElementById('pdF').classList.add('hd');
+  document.getElementById('pDays').value='';
   document.getElementById('fv').classList.remove('hd');
   document.getElementById('rv').classList.add('hd');
   document.getElementById('reviewView').classList.add('hd');
