@@ -468,17 +468,105 @@ function getSalesEmail(name) {
   return SALES_EMAIL_MAP[key] || '';
 }
 
-const IT=["DOUBLE A A4 70 GSM","DOUBLE A A4 75 GSM","DOUBLE A A4 80 GSM","DOUBLE A A4 100 GSM","N R COPIER A4 70 GSM","N R COPIER A4 75 GSM","N R COPIER A4 80 GSM","N R COPIER A3 70 GSM","N R COPIER A3 75 GSM","KHANNA A4 KBOLT (S) 65 GSM","KHANNA A4 EPRINT (S) 70 GSM","KHANNA A4 ECOPY (S) 75 GSM","KHANNA A3 KBOLT (S) 65 GSM","SATIA A4 65 GSM","SATIA A4 70 GSM","SATIA A4 75 GSM","SATIA A3 70 GSM","SATIA FS 70 GSM","ROZAANA A4 70 GSM","I K COPIER A4 70 GSM","P P LITE A4 70 GSM","PAPER ONE A4 75 GSM","PAPER ONE A4 100 GSM","PAPER ONE A3 100 GSM","MAPLE A4 70 GSM","SPECTRA A4 75 GSM","CENTURY STAR A4 75 GSM","J K RED A4 75 GSM","REFLECTION A4 65 GSM","REFLECTION A4 70 GSM","REFLECTION A4 75 GSM","REFLECTION A4 100 GSM","REFLECTION FS 70 GSM","REFLECTION A3 70 GSM","FINEPRINT A4 70 GSM","FINEPRINT A4 75 GSM","Tarang Yellow A4 75 GSM","Tarang Pink A4 75 GSM","Tarang Green A4 75 GSM","Tarang Blue A4 75 GSM","Tarang Ivory A4 75 GSM","ROZAANA A4 75 GSM"];
+// Initial fallback list of products and their ream-per-box packing ratio from Sheet's Product Master
+const FALLBACK_PRODUCTS = [
+  {"name":"DOUBLE A A4 70 GSM","perBox":5},
+  {"name":"DOUBLE A A4 75 GSM","perBox":5},
+  {"name":"DOUBLE A A4 80 GSM","perBox":5},
+  {"name":"DOUBLE A A4 100 GSM","perBox":4},
+  {"name":"N R COPIER A4 70 GSM","perBox":10},
+  {"name":"N R COPIER A4 75 GSM","perBox":10},
+  {"name":"N R COPIER A4 80 GSM","perBox":10},
+  {"name":"N R COPIER A3 70 GSM","perBox":5},
+  {"name":"N R COPIER A3 75 GSM","perBox":5},
+  {"name":"KHANNA A4 KBOLT (S) 65 GSM","perBox":10},
+  {"name":"KHANNA A4 EPRINT (S) 70 GSM","perBox":10},
+  {"name":"KHANNA A4 ECOPY (S) 75 GSM","perBox":10},
+  {"name":"KHANNA A3 KBOLT (S) 65 GSM","perBox":5},
+  {"name":"SATIA A4 65 GSM","perBox":10},
+  {"name":"SATIA A4 70 GSM","perBox":10},
+  {"name":"SATIA A4 75 GSM","perBox":10},
+  {"name":"Satia A3 65 GSM","perBox":5},
+  {"name":"SATIA A3 70 GSM","perBox":5},
+  {"name":"SATIA FS 70 GSM","perBox":10},
+  {"name":"ROZAANA A4 70 GSM","perBox":10},
+  {"name":"ROZAANA A4 75 GSM","perBox":10},
+  {"name":"I K COPY A4 70 GSM","perBox":10},
+  {"name":"PP LITE A4 70 GSM","perBox":10},
+  {"name":"Paper One A4 70 GSM","perBox":5},
+  {"name":"PAPER ONE A4 75 GSM","perBox":5},
+  {"name":"PAPER ONE A4 100 GSM","perBox":4},
+  {"name":"PAPER ONE A3 100 GSM","perBox":4},
+  {"name":"Mapple A4 70 GSM","perBox":10},
+  {"name":"SPECTRA A4 75 GSM","perBox":10},
+  {"name":"CENTURY STAR A4 75 GSM","perBox":10},
+  {"name":"J K RED A4 75 GSM","perBox":10},
+  {"name":"Reflection A4 65 GSM (B)","perBox":10},
+  {"name":"Reflection A4 65 GSM (S)","perBox":10},
+  {"name":"Reflection A4 70 GSM (B)","perBox":10},
+  {"name":"Reflection A4 70 GSM (S)","perBox":10},
+  {"name":"Superprint A4 70 GSM (S)","perBox":10},
+  {"name":"Reflection White A4 70 GSM (B)","perBox":10},
+  {"name":"Reflection White A4 70 GSM (S)","perBox":10},
+  {"name":"Reflection A4 75 GSM (B)","perBox":10},
+  {"name":"Reflection A4 75 GSM (S)","perBox":10},
+  {"name":"Reflection A4 100 GSM (B)","perBox":5},
+  {"name":"Reflection FS 70 GSM (B)","perBox":10},
+  {"name":"Reflection A3 70 GSM (B)","perBox":5},
+  {"name":"HP A3 70 GSM","perBox":5},
+  {"name":"FINEPRINT A4 70 GSM","perBox":10},
+  {"name":"FINEPRINT A4 75 GSM","perBox":10},
+  {"name":"Tarang Yellow A4 75 GSM","perBox":5},
+  {"name":"Tarang Pink A4 75 GSM","perBox":5},
+  {"name":"Tarang Green A4 75 GSM","perBox":5},
+  {"name":"Tarang Blue A4 75 GSM","perBox":5},
+  {"name":"Tarang Ivory A4 75 GSM","perBox":5},
+  {"name":"Bilt Copy Power A4 75 GSM","perBox":5},
+  {"name":"Bilt white copier A4 70 GSM","perBox":5},
+  {"name":"Bilt white copier A4 75 GSM","perBox":5}
+];
 
-const packingMap={"DOUBLE A A4 70 GSM":5,"DOUBLE A A4 75 GSM":5,"DOUBLE A A4 80 GSM":5,"DOUBLE A A4 100 GSM":4,"N R COPIER A4 70 GSM":10,"N R COPIER A4 75 GSM":10,"N R COPIER A4 80 GSM":10,"N R COPIER A3 70 GSM":5,"N R COPIER A3 75 GSM":5,"KHANNA A4 KBOLT (S) 65 GSM":10,"KHANNA A4 EPRINT (S) 70 GSM":10,"KHANNA A4 ECOPY (S) 75 GSM":10,"KHANNA A3 KBOLT (S) 65 GSM":5,"SATIA A4 65 GSM":10,"SATIA A4 70 GSM":10,"SATIA A4 75 GSM":10,"SATIA A3 70 GSM":5,"ROZAANA A4 70 GSM":10,"I K COPIER A4 70 GSM":10,"P P LITE A4 70 GSM":10,"PAPER ONE A4 75 GSM":5,"PAPER ONE A4 100 GSM":4,"PAPER ONE A3 100 GSM":4,"MAPLE A4 70 GSM":10,"SPECTRA A4 75 GSM":10,"CENTURY STAR A4 75 GSM":10,"J K RED A4 75 GSM":10,"REFLECTION A4 65 GSM":10,"REFLECTION A4 70 GSM":10,"REFLECTION A4 75 GSM":10,"REFLECTION A4 100 GSM":5,"REFLECTION FS 70 GSM":10,"REFLECTION A3 70 GSM":5,"FINEPRINT A4 70 GSM":10,"FINEPRINT A4 75 GSM":10,"Tarang Yellow A4 75 GSM":5,"Tarang Pink A4 75 GSM":5,"Tarang Green A4 75 GSM":5,"Tarang Blue A4 75 GSM":5,"SATIA FS 70 GSM":10,"Tarang Ivory A4 75 GSM":5,"ROZAANA A4 75 GSM":10};
+var IT = [];
+var packingMap = {};
+window._productData = [];
+window._productsLoaded = false;
 
 const DOUBLE_A_DISCOUNT_PRODUCTS=["DOUBLE A A4 70 GSM","DOUBLE A A4 75 GSM","DOUBLE A A4 80 GSM"];
 const DEFAULT_PACKING_RATIO=5;
 
+function applyProductMaster(productsList){
+  if(!productsList || !Array.isArray(productsList) || !productsList.length) return;
+  IT = [];
+  packingMap = {};
+  window._productData = productsList;
+  productsList.forEach(function(p){
+    if(!p) return;
+    var name = '';
+    var perBox = DEFAULT_PACKING_RATIO;
+    if(Array.isArray(p)){
+      name = p[0] ? String(p[0]).trim() : '';
+      perBox = parseFloat(p[1]) || DEFAULT_PACKING_RATIO;
+    } else if(typeof p === 'object'){
+      name = (p.name || p.productName || p.product || '').toString().trim();
+      var pb = (p.perBox !== undefined) ? p.perBox : ((p.ream !== undefined) ? p.ream : ((p.reamsPerBox !== undefined) ? p.reamsPerBox : ((p.reamPerBox !== undefined) ? p.reamPerBox : DEFAULT_PACKING_RATIO)));
+      perBox = parseFloat(pb) || DEFAULT_PACKING_RATIO;
+    } else {
+      name = String(p).trim();
+    }
+    if(!name) return;
+    var upper = name.toUpperCase();
+    var exists = IT.some(function(n){ return n.toUpperCase() === upper; });
+    if(!exists) IT.push(name);
+    packingMap[name] = perBox;
+  });
+  window._productsLoaded = true;
+}
+
 function findPackingRatio(pName){
   if(!pName)return null;
-  if(packingMap.hasOwnProperty(pName))return packingMap[pName];
-  var upper=pName.trim().toUpperCase();
+  var trimmed = pName.trim();
+  if(packingMap.hasOwnProperty(trimmed))return packingMap[trimmed];
+  var upper=trimmed.toUpperCase();
   for(var key in packingMap){if(key.toUpperCase()===upper)return packingMap[key];}
   return null;
 }
@@ -538,6 +626,7 @@ window.addEventListener('DOMContentLoaded',function(){
   var today=new Date().toISOString().split('T')[0];
   document.getElementById('oDate').value=today;
   document.getElementById('dDate').min=today;
+  applyProductMaster(FALLBACK_PRODUCTS);
   populateSalesPersons(FALLBACK_SALES_PERSONS);
   populateFormFillers(FORM_FILLERS);
   sw('Order');
@@ -794,16 +883,9 @@ function applyInitialData(data){
   if(_spList.indexOf('DA DD')===-1)_spList.push('DA DD');
   populateSalesPersons(_spList);
 
-  window._productData = data.products || [];
-  (data.products || []).forEach(function(p){
-    if(!p||!p.name)return;
-    var name=p.name.toString().trim();
-    if(!name)return;
-    var upper=name.toUpperCase();
-    var known=IT.some(function(n){return n.toUpperCase()===upper;});
-    if(!known)IT.push(name);
-    packingMap[name]=parseFloat(p.perBox)||DEFAULT_PACKING_RATIO;
-  });
+  if(data.products && Array.isArray(data.products)){
+    applyProductMaster(data.products);
+  }
 
 }
 
@@ -939,29 +1021,27 @@ function retryFirmLoad(e){
 function showProductDD(el){
   var dd=el.parentElement.querySelector('.firm-dd');
   if(!dd)return;
+  var names=IT||[];
+  if(!window._productsLoaded && !names.length){
+    dd.innerHTML='<div class="fdi-empty">Product list load ho rahi hai, thoda ruko...</div>';
+    dd.classList.add('show');
+    return;
+  }
   var q=(el.value||'').trim().toLowerCase();
-  var names=(typeof IT!=='undefined'?IT:Object.keys(packingMap));
   var matches=q?names.filter(function(n){return n.toLowerCase().indexOf(q)!==-1;}):names;
   matches=matches.slice(0,50);
   var html=matches.length
-    ? matches.map(function(n){return '<div class="fdi" onmousedown="selectProduct(this,\''+escHtml(n).replace(/'/g,"\\'")+'\')">'+escHtml(n)+'</div>';}).join('')
+    ? matches.map(function(n){
+        var ratio=findPackingRatio(n);
+        var badgeText=ratio?(ratio+' Ream/Box'):'';
+        return '<div class="fdi" onmousedown="selectProduct(this,\''+escHtml(n).replace(/'/g,"\\'")+'\')" style="display:flex;justify-content:space-between;align-items:center;gap:10px">'
+          +'<span>'+escHtml(n)+'</span>'
+          +(badgeText?'<span style="font-size:11px;font-weight:700;color:var(--c-primary);background:var(--c-surface-alt);border:1px solid var(--c-border);padding:2px 7px;border-radius:12px;white-space:nowrap;font-family:\'JetBrains Mono\',monospace">'+badgeText+'</span>':'')
+          +'</div>';
+      }).join('')
     : (q?'<div class="fdi-empty">No matching product</div>':'');
-  var trimmedVal=(el.value||'').trim();
-  var exactKnown=trimmedVal&&names.some(function(n){return n.toUpperCase()===trimmedVal.toUpperCase();});
-  if(trimmedVal&&!exactKnown){
-    html+='<div class="fdi fdi-add" onmousedown="addNewProductFromDropdown(this,\''+escHtml(trimmedVal).replace(/'/g,"\\'")+'\')">&#10133; "'+escHtml(trimmedVal)+'" ko <strong>naye product</strong> ke roop me add karein</div>';
-  }
   dd.innerHTML=html;
   dd.classList.add('show');
-}
-async function addNewProductFromDropdown(itemEl,name){
-  if(!(await confirmAndRegisterNewProduct(name)))return;
-  var wrap=itemEl.closest('.fld');
-  var inp=wrap.querySelector('.p-name');
-  var dd=wrap.querySelector('.firm-dd');
-  inp.value=name;
-  dd.classList.remove('show');
-  onProdChange(inp);
 }
 function onProductInput(el){
   showProductDD(el);
@@ -969,7 +1049,18 @@ function onProductInput(el){
 }
 function hideProductDD(el){
   var dd=el.parentElement.querySelector('.firm-dd');
-  setTimeout(function(){if(dd)dd.classList.remove('show');},150);
+  setTimeout(function(){
+    if(dd)dd.classList.remove('show');
+    var val=(el.value||'').trim();
+    if(val){
+      var upper=val.toUpperCase();
+      var exact=IT.find(function(n){return n.toUpperCase()===upper;});
+      if(exact&&el.value!==exact){
+        el.value=exact;
+        onProdChange(el);
+      }
+    }
+  },150);
 }
 function selectProduct(itemEl,name){
   var wrap=itemEl.closest('.fld');
@@ -1450,20 +1541,15 @@ async function confirmAndRegisterNewFirm(name,gst){
 }
 function isKnownProduct(name){
   var upper=(name||'').trim().toUpperCase();
-  if(!upper)return true;
-  return IT.some(function(n){return n.toUpperCase()===upper;});
+  if(!upper)return false;
+  return IT.some(function(n){return n.trim().toUpperCase()===upper;});
 }
-async function confirmAndRegisterNewProduct(name){
+async function validateProductInMaster(name){
   var trimmedName=(name||'').trim();
-  if(!trimmedName||isKnownProduct(trimmedName))return true;
-  var ok1=await showCustomConfirm('Naya Product?','"'+escHtml(trimmedName)+'" product list me nahi mila.<br><br>Kya yeh ek NAYA product hai?','Haan, Naya Product Hai','Cancel');
-  if(!ok1)return false;
-  var ok2=await showCustomConfirm('Double-Check Karein','<strong>Product Name:</strong> '+escHtml(trimmedName)+'<br><br>Yeh sahi hai? Confirm karne par master list me permanently add ho jayega.','Haan, Sahi Hai','Cancel');
-  if(!ok2)return false;
-  IT.push(trimmedName);
-  packingMap[trimmedName]=DEFAULT_PACKING_RATIO;
-  fetch(WEB_APP_URL+'?action=addNewProduct&name='+encodeURIComponent(trimmedName)+'&perBox='+DEFAULT_PACKING_RATIO).catch(function(){});
-  return true;
+  if(!trimmedName)return false;
+  if(isKnownProduct(trimmedName))return true;
+  await showCustomAlert('Product List Me Nahi Hai','Product "'+escHtml(trimmedName)+'" master list me nahi mila.<br><br>Kripya dropdown list se hi sheet me uplabdh product select karein.');
+  return false;
 }
 
 async function sub(e){
@@ -1530,9 +1616,9 @@ async function sub(e){
   var uniqueProductNames=[];
   items.forEach(function(it){if(uniqueProductNames.indexOf(it.name)===-1)uniqueProductNames.push(it.name);});
   for(var pni=0;pni<uniqueProductNames.length;pni++){
-    if(!(await confirmAndRegisterNewProduct(uniqueProductNames[pni]))){
+    if(!(await validateProductInMaster(uniqueProductNames[pni]))){
       sMsg.className='sm er';
-      sMsg.textContent='Product confirm nahi hua — submission cancel ho gaya.';
+      sMsg.textContent='Product "'+uniqueProductNames[pni]+'" sheet master list me nahi mila — submission cancel ho gaya.';
       sMsg.classList.remove('hd');
       return;
     }
