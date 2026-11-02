@@ -586,7 +586,7 @@ let EMOJI_PRAY_B64='';
 
 <script>
 
-let CT='Order', FN='', _d=null, _submitting=false, IS_UPDATE_MODE=false, MODIFY_ORIG_TIMESTAMP='';
+let CT='Order', FN='', _d=null, _submitting=false, IS_UPDATE_MODE=false, MODIFY_ORIG_TIMESTAMP='', MODIFY_ROW_NUMBER=null, MODIFY_ROW_COUNT=0;
 var _submittedFormNumbers={};
 (function(){try{var raw=localStorage.getItem('sp_submitted_orders');if(raw){var p=JSON.parse(raw),now=Date.now(),day=24*60*60*1000;Object.keys(p).forEach(function(k){if(now-p[k]<day)_submittedFormNumbers[k]=p[k];});}}catch(e){}})();
 function markFormSubmitted(fn){_submittedFormNumbers[fn]=Date.now();try{localStorage.setItem('sp_submitted_orders',JSON.stringify(_submittedFormNumbers));}catch(e){}}
@@ -1220,6 +1220,8 @@ function selectModifyCandidate(fn){
 function cancelModify(){
   IS_UPDATE_MODE=false;
   MODIFY_ORIG_TIMESTAMP='';
+  MODIFY_ROW_NUMBER=null;
+  MODIFY_ROW_COUNT=0;
   MODIFY_PIN_VERIFIED=false;
   document.getElementById('modCancelBtn').classList.add('hd');
   document.getElementById('modPiInput').value='';
@@ -1240,8 +1242,10 @@ function setSelectVal(id,val){var sel=document.getElementById(id);if(!sel||!val)
 function populateFormForModify(o){
   IS_UPDATE_MODE=true;
   MODIFY_ORIG_TIMESTAMP=o.timestamp||'';
+  MODIFY_ROW_NUMBER=o.rowNumber||null;
+  MODIFY_ROW_COUNT=o.itemCount||(o.items?o.items.length:1);
   FN=o.formNumber;
-  document.getElementById('fnoDisp').textContent=FN+' (MODIFYING)';
+  document.getElementById('fnoDisp').textContent=FN+' (MODIFYING'+(MODIFY_ROW_NUMBER ? ' - ROW '+MODIFY_ROW_NUMBER : '')+')';
   document.getElementById('modCancelBtn').classList.remove('hd');
 
   document.getElementById('firmName').value=o.firmName||'';
@@ -1661,6 +1665,8 @@ async function sub(e){
     formType:CT,
     formNumber:FN,
     isUpdate:IS_UPDATE_MODE,
+    rowNumber:MODIFY_ROW_NUMBER,
+    itemCount:MODIFY_ROW_COUNT,
     originalTimestamp:MODIFY_ORIG_TIMESTAMP,
     firmName:firmNameVal,
     gstNo:gstVal,
@@ -1902,7 +1908,7 @@ function doSubmit(d,btn,sTxt,sSpn){
       sTxt.textContent='✓ Confirm & Submit';
       sSpn.classList.add('hd');
       if(res.success){
-        var savedFno = res.formNumber || res.piNo || res.orderNumber || res.fno || d.formNumber;
+        var savedFno = d.isUpdate ? d.formNumber : (res.formNumber || res.piNo || res.orderNumber || res.fno || d.formNumber);
         d.formNumber = savedFno;
         if(_d) _d.formNumber = savedFno;
         FN = savedFno;
@@ -1914,6 +1920,8 @@ function doSubmit(d,btn,sTxt,sSpn){
         sr(d,driveUrl);
         IS_UPDATE_MODE=false;
         MODIFY_ORIG_TIMESTAMP='';
+        MODIFY_ROW_NUMBER=null;
+        MODIFY_ROW_COUNT=0;
         MODIFY_PIN_VERIFIED=false;
         document.getElementById('modCancelBtn').classList.add('hd');
         document.getElementById('modPiInput').value='';
@@ -1945,13 +1953,15 @@ function doSubmit(d,btn,sTxt,sSpn){
 
 function showModal(fno,ftype,driveUrl,isUpdate){
   var m=document.getElementById('dlModal');
-  var titleWord=isUpdate?'Updated':'Submitted';
+  var titleWord=isUpdate?'Updated (Same Row, Same PO)':'Submitted';
+  var msgDetail=isUpdate
+    ? 'Form No: <strong>'+fno+'</strong><br>Successfully updated in <strong>SAME ROW</strong> in Google Sheets.<br>'
+    : 'Form No: <strong>'+fno+'</strong><br>Successfully saved to Google Sheets.<br>';
   m.innerHTML='<div class="modal-overlay"><div class="modal-box">'
     +'<div class="modal-icon">&#9989;</div>'
     +'<div class="modal-title">'+(ftype==='Order'?'Order':'Enquiry')+' '+titleWord+'!</div>'
     +'<div class="modal-msg">'
-    +'Form No: <strong>'+fno+'</strong><br>'
-    +'Successfully saved to Google Sheets.<br>'
+    +msgDetail
     +'<small style="color:#25D366;font-weight:700">&#10003; WhatsApp message sent automatically</small>'
     +'</div>'
     +'<div class="modal-actions">'
@@ -2411,6 +2421,8 @@ function rst(){
   _submitting=false;
   IS_UPDATE_MODE=false;
   MODIFY_ORIG_TIMESTAMP='';
+  MODIFY_ROW_NUMBER=null;
+  MODIFY_ROW_COUNT=0;
   MODIFY_PIN_VERIFIED=false;
   document.getElementById('modCancelBtn').classList.add('hd');
   document.getElementById('modPiInput').value='';
