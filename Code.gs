@@ -453,23 +453,23 @@ function processForm(formData) {
 
 var ORDER_DETAIL_HEADERS = [
   'Timestamp', 'Form No', 'Firm Name', 'GST No', 'Area', 'Customer Name',
-  'WhatsApp', 'eMail Address', 'Sales Person', 'Order Date', 'Delivery Date',
+  'WhatsApp', 'Sales Person', 'Order Date', 'Delivery Date',
   'Client Type', 'Payment Terms', 'Payment Days',
   'Transport Mode', 'Transport Name', 'Transporter Number', 'Vehicle Number', 'Driver Number',
   'Product Name', 'Ream Qty', 'Box Qty', 'Original Rate', 'Discount', 'Net Rate', 'Freight (Item)',
   'Item Value', 'Item Value + Freight', 'GST (18%)', 'Item Grand Total',
-  'Remarks', 'PDF URL'
+  'Remarks', 'Filled By (Name)', 'PDF URL'
 ];
 
 var ORDER_SUMMARY_HEADERS = [
   'Timestamp', 'Form No', 'Firm Name', 'GST No', 'Area', 'Customer Name',
-  'WhatsApp', 'eMail Address', 'Sales Person', 'Order Date', 'Delivery Date',
+  'WhatsApp', 'Sales Person', 'Order Date', 'Delivery Date',
   'Client Type', 'Payment Terms', 'Payment Days',
   'Transport Mode', 'Transport Name', 'Transporter Number', 'Vehicle Number', 'Driver Number',
   'Items (Name | Ream | Box | Rate)', 'Total Reams', 'Total Boxes',
   'Gross Value', 'Total Discount', 'Net Value',
   'Freight', 'GST (18%)', 'Grand Total',
-  'Remarks', 'PDF URL'
+  'Remarks', 'Filled By (Name)', 'PDF URL'
 ];
 
 // Builds the detail + summary rows for an order without touching the sheet.
@@ -542,7 +542,7 @@ function buildOrderRowsAndSummary(formData, timestamp) {
       timestamp,
       formData.formNumber || '',
       fmFirmName, fmGstNo, fmArea, fmCustomer,
-      formData.whatsapp || '', isFirst ? fmEmail : '', fmSalesPerson,
+      formData.whatsapp || '', fmSalesPerson,
       fmOrderDate, fmDelivDate, fmClientType,
       fmPaymentTerms, formData.paymentDays || '',
       fmTransportMode, fmTransName,
@@ -551,6 +551,7 @@ function buildOrderRowsAndSummary(formData, timestamp) {
       round2(itemOrigRate), round2(itemDiscount), round2(itemRate),
       round2(itemFreight), itemValue, itemWithFreight, itemGST, itemGrand,
       isFirst ? fmRemarks : '',
+      isFirst ? toAllCaps(formData.filledByEmail || formData.formFilledBy || '') : '',
       ''
     ]);
   }
@@ -564,7 +565,7 @@ function buildOrderRowsAndSummary(formData, timestamp) {
     timestamp,
     formData.formNumber || '',
     fmFirmName, fmGstNo, fmArea, fmCustomer,
-    formData.whatsapp || '', fmEmail, fmSalesPerson,
+    formData.whatsapp || '', fmSalesPerson,
     fmOrderDate, fmDelivDate, fmClientType,
     fmPaymentTerms, formData.paymentDays || '',
     fmTransportMode, fmTransName,
@@ -574,6 +575,7 @@ function buildOrderRowsAndSummary(formData, timestamp) {
     round2(grossVal), round2(totalDiscSummary), round2(netVal),
     round2(freightSummary), gstSummary, grandTotal,
     fmRemarks,
+    toAllCaps(formData.filledByEmail || formData.formFilledBy || ''),
     ''
   ];
 
@@ -833,21 +835,8 @@ function updateOrder(formData, timestamp) {
 
 
 // Looks up an existing order by its PI No. (Form No) so it can be loaded
-// back into the form for editing. Returns all item rows + the shared
-// header fields from the first row.
-var ORDER_LOOKUP_COLS = {
-  timestamp: 0, formNo: 1, firmName: 2, gstNo: 3, area: 4, customerName: 5,
-  whatsapp: 6, email: 7, salesPerson: 8, orderDate: 9, deliveryDate: 10,
-  clientType: 11, paymentTerms: 12, paymentDays: 13,
-  transportMode: 14, transportName: 15, transporterNumber: 16, vehicleNumber: 17, driverNumber: 18,
-  productName: 19, ream: 20, box: 21, origRate: 22, discount: 23, netRate: 24, freight: 25,
-  remarks: 30
-};
-
-// Accepts a full PI No. (e.g. "PI-SP/26-27/00425") OR just a fragment/number
-// (e.g. "425" or "00425") so the user doesn't have to type the whole thing.
-// Exact match wins outright; otherwise every order whose PI No. contains the
-// typed text is offered back as a pick-list for the client to disambiguate.
+// back into the form for editing. Uses DYNAMIC column matching based on
+// row 1 of the 'Orders' sheet so column layout changes never break data population.
 function getOrderByFormNumber(query) {
   query = (query || '').toString().trim();
   if (!query) return { found: false, message: 'PI No. ya order number daalein.' };
@@ -859,17 +848,68 @@ function getOrderByFormNumber(query) {
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return { found: false, message: 'No orders found.' };
 
-  var numCols = ORDER_DETAIL_HEADERS.length;
-  var values = sheet.getRange(2, 1, lastRow - 1, numCols).getValues();
-  var col = ORDER_LOOKUP_COLS;
+  var lastCol = sheet.getLastColumn();
+  var headerRow = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var values = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+  function findColIndex(candidates, fallback) {
+    for (var c = 0; c < candidates.length; c++) {
+      var target = candidates[c].toLowerCase().replace(/[^a-z0-9]/g, '');
+      for (var h = 0; h < headerRow.length; h++) {
+        var hStr = (headerRow[h] || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (hStr === target) return h;
+      }
+    }
+    return (typeof fallback === 'number') ? fallback : -1;
+  }
+
+  var col = {
+    timestamp: findColIndex(['Timestamp', 'Time'], 0),
+    formNo: findColIndex(['Form No', 'Form Number', 'PI No', 'PI Number'], 1),
+    firmName: findColIndex(['Firm Name', 'Firm'], 2),
+    gstNo: findColIndex(['GST No', 'GST', 'GSTIN'], 3),
+    area: findColIndex(['Area', 'Area Name'], 4),
+    customerName: findColIndex(['Customer Name', 'Customer'], 5),
+    whatsapp: findColIndex(['WhatsApp', 'Mobile', 'Phone'], 6),
+    salesPerson: findColIndex(['Sales Person', 'Salesperson', 'SP'], 7),
+    orderDate: findColIndex(['Order Date'], 8),
+    deliveryDate: findColIndex(['Delivery Date'], 9),
+    clientType: findColIndex(['Client Type'], 10),
+    paymentTerms: findColIndex(['Payment Terms'], 11),
+    paymentDays: findColIndex(['Payment Days'], 12),
+    transportMode: findColIndex(['Transport Mode'], 13),
+    transportName: findColIndex(['Transport Name'], 14),
+    transporterNumber: findColIndex(['Transporter Number'], 15),
+    vehicleNumber: findColIndex(['Vehicle Number'], 16),
+    driverNumber: findColIndex(['Driver Number'], 17),
+    productName: findColIndex(['Product Name', 'Item Name', 'Product'], 18),
+    ream: findColIndex(['Ream Qty', 'Ream', 'Reams'], 19),
+    box: findColIndex(['Box Qty', 'Box', 'Boxes'], 20),
+    origRate: findColIndex(['Original Rate', 'Orig Rate'], 21),
+    discount: findColIndex(['Discount', 'Flat Discount'], 22),
+    netRate: findColIndex(['Net Rate', 'Rate'], 23),
+    freight: findColIndex(['Freight (Item)', 'Freight'], 24),
+    remarks: findColIndex(['Remarks', 'Remark'], 29),
+    filledBy: findColIndex(['Filled By (Name)', 'Form Filled By', 'Filled By', 'User'], 30),
+    email: findColIndex(['eMail Address', 'Email Address', 'Email', 'eMail'], -1)
+  };
+
+  function getCell(row, idx) {
+    if (idx === -1 || idx === undefined || !row || idx >= row.length) return '';
+    return row[idx];
+  }
 
   // Distinct PI numbers in the sheet, most-recently-added first.
   var seen = {};
   var orderList = [];
   for (var i = 0; i < values.length; i++) {
-    var fn = (values[i][col.formNo] || '').toString().trim();
+    var fn = (getCell(values[i], col.formNo) || '').toString().trim();
     if (!fn || seen[fn]) continue;
-    seen[fn] = { formNumber: fn, firmName: values[i][col.firmName] || '', customerName: values[i][col.customerName] || '' };
+    seen[fn] = {
+      formNumber: fn,
+      firmName: getCell(values[i], col.firmName) || '',
+      customerName: getCell(values[i], col.customerName) || ''
+    };
     orderList.push(fn);
   }
   orderList.reverse();
@@ -899,7 +939,7 @@ function getOrderByFormNumber(query) {
   var matchedRows = [];
   var firstMatchedRowIndex = -1;
   for (var m = 0; m < values.length; m++) {
-    var cellFn = (values[m][col.formNo] || '').toString().trim();
+    var cellFn = (getCell(values[m], col.formNo) || '').toString().trim();
     if (cellFn === formNumber) {
       if (firstMatchedRowIndex === -1) {
         firstMatchedRowIndex = m + 2; // Row index in sheet (data starts at row 2)
@@ -921,54 +961,67 @@ function getOrderByFormNumber(query) {
         if (isNaN(v.getTime())) return '';
         return Utilities.formatDate(v, getTZ(), 'yyyy-MM-dd');
       }
-      var parts = v.toString().trim().split('/');
+      var str = v.toString().trim();
+      if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 10);
+      var parts = str.split('/');
       if (parts.length === 3) {
         var d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
         if (!isNaN(d.getTime())) return Utilities.formatDate(d, getTZ(), 'yyyy-MM-dd');
       }
+      var d2 = new Date(str);
+      if (!isNaN(d2.getTime())) return Utilities.formatDate(d2, getTZ(), 'yyyy-MM-dd');
       return '';
     } catch (e) { return ''; }
   };
 
   var items = matchedRows.map(function(r) {
+    var origR = parseFloat(getCell(r, col.origRate)) || 0;
+    var netR = parseFloat(getCell(r, col.netRate)) || 0;
     return {
-      name: r[col.productName] || '',
-      ream: parseFloat(r[col.ream]) || 0,
-      box: parseFloat(r[col.box]) || 0,
-      origRate: parseFloat(r[col.origRate]) || 0,
-      rate: parseFloat(r[col.netRate]) || 0,
-      discount: parseFloat(r[col.discount]) || 0
+      name: getCell(r, col.productName) || '',
+      ream: parseFloat(getCell(r, col.ream)) || 0,
+      box: parseFloat(getCell(r, col.box)) || 0,
+      origRate: origR || netR || 0,
+      rate: netR || origR || 0,
+      discount: parseFloat(getCell(r, col.discount)) || 0
     };
   });
 
   var totalFreight = 0;
-  matchedRows.forEach(function(r) { totalFreight += parseFloat(r[col.freight]) || 0; });
+  if (col.freight !== -1) {
+    matchedRows.forEach(function(r) { totalFreight += parseFloat(getCell(r, col.freight)) || 0; });
+  }
 
-  var tsVal = first[col.timestamp];
+  var tsVal = getCell(first, col.timestamp);
+  var filledByVal = getCell(first, col.filledBy);
+
   var order = {
     rowNumber: firstMatchedRowIndex,
     itemCount: matchedRows.length,
     formNumber: formNumber,
     timestamp: (tsVal instanceof Date) ? tsVal.toISOString() : (tsVal || ''),
-    firmName: first[col.firmName] || '',
-    gstNo: first[col.gstNo] || '',
-    areaName: first[col.area] || '',
-    customerName: first[col.customerName] || '',
-    whatsapp: first[col.whatsapp] || '',
-    email: first[col.email] || '',
-    salesPerson: first[col.salesPerson] || '',
-    orderDateISO: toISODate(first[col.orderDate]),
-    deliveryDateISO: toISODate(first[col.deliveryDate]),
-    clientType: first[col.clientType] || '',
-    paymentTerms: first[col.paymentTerms] || '',
-    paymentDays: first[col.paymentDays] || '',
-    transportMode: first[col.transportMode] || '',
-    transportName: first[col.transportName] || '',
-    transporterNumber: first[col.transporterNumber] || '',
-    vehicleNumber: first[col.vehicleNumber] || '',
-    driverNumber: first[col.driverNumber] || '',
+    firmName: getCell(first, col.firmName) || '',
+    gstNo: getCell(first, col.gstNo) || '',
+    areaName: getCell(first, col.area) || '',
+    customerName: getCell(first, col.customerName) || '',
+    whatsapp: getCell(first, col.whatsapp) || '',
+    email: col.email !== -1 ? (getCell(first, col.email) || '') : '',
+    salesPerson: getCell(first, col.salesPerson) || '',
+    orderDateISO: toISODate(getCell(first, col.orderDate)),
+    deliveryDateISO: toISODate(getCell(first, col.deliveryDate)),
+    clientType: getCell(first, col.clientType) || '',
+    paymentTerms: getCell(first, col.paymentTerms) || '',
+    paymentDays: getCell(first, col.paymentDays) || '',
+    transportMode: getCell(first, col.transportMode) || '',
+    transportName: getCell(first, col.transportName) || '',
+    transporterNumber: getCell(first, col.transporterNumber) || '',
+    vehicleNumber: getCell(first, col.vehicleNumber) || '',
+    driverNumber: getCell(first, col.driverNumber) || '',
     freightAmount: Math.round(totalFreight * 100) / 100,
-    remarks: first[col.remarks] || '',
+    remarks: getCell(first, col.remarks) || '',
+    filledBy: filledByVal || '',
+    formFilledBy: filledByVal || '',
+    filledByEmail: filledByVal || '',
     items: items
   };
 

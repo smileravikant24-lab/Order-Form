@@ -1240,6 +1240,10 @@ function cancelModify(){
 function setSelectVal(id,val){var sel=document.getElementById(id);if(!sel||!val)return;sel.value=val;if(sel.value===val)return;var u=val.trim().toUpperCase();for(var i=0;i<sel.options.length;i++){if(sel.options[i].value.trim().toUpperCase()===u||sel.options[i].textContent.trim().toUpperCase()===u){sel.value=sel.options[i].value;return;}}var nopt=document.createElement('option');nopt.value=val;nopt.textContent=val;sel.appendChild(nopt);sel.value=val;}
 
 function populateFormForModify(o){
+  if(typeof sw === 'function' && CT !== 'Order'){
+    sw('Order');
+  }
+
   IS_UPDATE_MODE=true;
   MODIFY_ORIG_TIMESTAMP=o.timestamp||'';
   MODIFY_ROW_NUMBER=o.rowNumber||null;
@@ -1253,6 +1257,8 @@ function populateFormForModify(o){
   if(o.gstNo){
     document.getElementById('gstBadgeVal').textContent=o.gstNo;
     document.getElementById('gstBadgeWrap').style.display='block';
+  } else {
+    document.getElementById('gstBadgeWrap').style.display='none';
   }
   document.getElementById('areaName').value=o.areaName||'';
   document.getElementById('custName').value=o.customerName||'';
@@ -1262,13 +1268,22 @@ function populateFormForModify(o){
   document.getElementById('oDate').value=o.orderDateISO||o.orderDate||'';
   document.getElementById('dDate').value=o.deliveryDateISO||o.deliveryDate||'';
   setSelectVal('cType',o.clientType||'');
-  setSelectVal('pTerms',o.paymentTerms||'');
+
+  var pTermVal = (o.paymentTerms || '').toString().trim();
+  if (pTermVal.toUpperCase().includes('CREDIT')) pTermVal = 'Credit Days';
+  else if (pTermVal.toUpperCase().includes('ADVANCE')) pTermVal = 'Advance Payment';
+  setSelectVal('pTerms', pTermVal);
   tpd();
   document.getElementById('pDays').value=o.paymentDays||'';
 
   if(o.transportMode){
-    var tmRadio=document.querySelector('input[name="tm"][value="'+o.transportMode+'"]');
-    if(tmRadio){tmRadio.checked=true;st(o.transportMode);}
+    var tmUpper = o.transportMode.toString().trim().toUpperCase();
+    var tmVal = tmUpper.includes('LBP') ? 'LBP' : (tmUpper.includes('FOR') ? 'FOR' : tmUpper);
+    var tmRadio=document.querySelector('input[name="tm"][value="'+tmVal+'"]');
+    if(tmRadio){
+      tmRadio.checked=true;
+      st(tmVal);
+    }
   }
   document.getElementById('tN').value=o.transportName||'';
   document.getElementById('tNu').value=o.transporterNumber||'';
@@ -1279,14 +1294,15 @@ function populateFormForModify(o){
 
   var ic=document.getElementById('ic');
   ic.innerHTML='';
-  (o.items||[]).forEach(function(it){
+  var itemList = (o.items && o.items.length) ? o.items : [{}];
+  itemList.forEach(function(it){
     ar();
     var row=ic.lastElementChild;
     row.querySelector('.p-name').value=it.name||'';
     row.querySelector('.q-ream').value=it.ream||'';
     row.querySelector('.q-box').value=it.box||'';
     row.querySelector('.q-rate').value=it.origRate||it.rate||'';
-    if(it.discount){
+    if(it.discount && parseFloat(it.discount) > 0){
       var discWrap=row.querySelector('.disc-wrap');
       discWrap.classList.add('show');
       discWrap.classList.remove('hd');
