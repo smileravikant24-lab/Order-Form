@@ -817,7 +817,6 @@ function saveFirmCreditOverride(firmName, creditDaysVal, termsVal){
   try{
     fetch(WEB_APP_URL, {
       method: 'POST',
-      mode: 'no-cors',
       body: JSON.stringify({
         action: 'updateCreditDays',
         firmName: firmName.trim(),
@@ -1276,8 +1275,8 @@ function populateFormForModify(o){
   if (pTermVal.toUpperCase().includes('CREDIT')) pTermVal = 'Credit Days';
   else if (pTermVal.toUpperCase().includes('ADVANCE')) pTermVal = 'Advance Payment';
   setSelectVal('pTerms', pTermVal);
-  tpd();
   document.getElementById('pDays').value=o.paymentDays||'';
+  tpd();
 
   if(o.transportMode){
     var tmUpper = o.transportMode.toString().trim().toUpperCase();

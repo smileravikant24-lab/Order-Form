@@ -68,6 +68,12 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
+  if (e.parameter.action === 'updateCreditDays') {
+    var cdResult = updateFirmCreditDaysInMaster(e.parameter.firmName, e.parameter.creditDays);
+    return ContentService.createTextOutput(JSON.stringify(cdResult))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   if (e.parameter.action === 'getFormNumber') {
     var fno = getNextFormNumber(e.parameter.formType);
     return ContentService.createTextOutput(JSON.stringify({ formNumber: fno }))
@@ -335,7 +341,7 @@ function getProductData() {
 // Adds a party the user has confirmed is new to the WMS_Firms master
 // sheet (the same sheet getFirmData() reads from). Silently no-ops if the
 // name is already present (case-insensitive) so a retry can't duplicate it.
-function addNewFirmToMaster(name, gst) {
+function addNewFirmToMaster(name, gst, creditDays) {
   name = (name || '').toString().trim().toUpperCase();
   gst = (gst || '').toString().trim().toUpperCase();
   if (!name) return { success: false, message: 'Firm name required.' };
@@ -351,20 +357,94 @@ function addNewFirmToMaster(name, gst) {
       var existing = sheet.getRange(2, FIRM_COLUMN, lastRow - 1, 1).getValues();
       for (var i = 0; i < existing.length; i++) {
         if ((existing[i][0] || '').toString().trim().toUpperCase() === name) {
+          if (creditDays !== undefined && creditDays !== null && creditDays !== '') {
+            var cdCol = CREDIT_DAYS_COLUMN || 3;
+            var numVal = parseFloat(creditDays);
+            sheet.getRange(i + 2, cdCol).setValue(!isNaN(numVal) ? numVal : creditDays);
+            try { CacheService.getScriptCache().remove(FIRM_CACHE_KEY); } catch (cacheErr) {}
+          }
           return { success: true, alreadyExists: true };
         }
       }
     }
 
-    var numCols = Math.max(FIRM_COLUMN, GST_COLUMN);
+    var numCols = Math.max(FIRM_COLUMN, GST_COLUMN, CREDIT_DAYS_COLUMN);
     var newRow = new Array(numCols).fill('');
     newRow[FIRM_COLUMN - 1] = name;
     newRow[GST_COLUMN - 1] = gst;
+    var cdNum = parseFloat(creditDays);
+    newRow[CREDIT_DAYS_COLUMN - 1] = (!isNaN(cdNum) && cdNum >= 0) ? cdNum : 0;
     sheet.appendRow(newRow);
     try { CacheService.getScriptCache().remove(FIRM_CACHE_KEY); } catch (cacheErr) {}
     return { success: true };
   } catch (e) {
     Logger.log('addNewFirmToMaster Error: ' + e.message);
+    return { success: false, message: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Updates or adds the Credit Days for a firm directly in WMS_Firms master sheet (Column C)
+function updateFirmCreditDaysInMaster(firmName, creditDays) {
+  firmName = (firmName || '').toString().trim().toUpperCase();
+  if (!firmName) return { success: false, message: 'Firm name required.' };
+
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    var externalSS = SpreadsheetApp.openByUrl(FIRM_SHEET_URL);
+    var sheet = externalSS.getSheetByName(FIRM_SHEET_NAME) || externalSS.getSheets()[0];
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: false, message: 'WMS_Firms sheet is empty.' };
+
+    var lastCol = Math.max(sheet.getLastColumn(), 3);
+    var headerRow = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+    // Ensure header in Column 3 if blank
+    if (!headerRow[CREDIT_DAYS_COLUMN - 1]) {
+      sheet.getRange(1, CREDIT_DAYS_COLUMN).setValue('Credit Days');
+    }
+
+    var firmIdx = -1;
+    var cdIdx = -1;
+    for (var h = 0; h < headerRow.length; h++) {
+      var hClean = (headerRow[h] || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (firmIdx === -1 && (hClean === 'firmname' || hClean === 'firm' || hClean === 'partyname')) firmIdx = h + 1;
+      if (cdIdx === -1 && (hClean === 'creditdays' || hClean === 'paymentdays' || hClean === 'days' || hClean === 'credit')) cdIdx = h + 1;
+    }
+    var targetFirmCol = (firmIdx !== -1) ? firmIdx : FIRM_COLUMN;
+    var targetCdCol = (cdIdx !== -1) ? cdIdx : CREDIT_DAYS_COLUMN;
+
+    var existingFirms = sheet.getRange(2, targetFirmCol, lastRow - 1, 1).getValues();
+    var targetRow = -1;
+    for (var i = 0; i < existingFirms.length; i++) {
+      if ((existingFirms[i][0] || '').toString().trim().toUpperCase() === firmName) {
+        targetRow = i + 2;
+        break;
+      }
+    }
+
+    var numVal = parseFloat(creditDays);
+    var valToSet = (!isNaN(numVal) && numVal >= 0) ? numVal : ((creditDays === '0' || creditDays === 0) ? 0 : (creditDays || ''));
+
+    if (targetRow !== -1) {
+      sheet.getRange(targetRow, targetCdCol).setValue(valToSet);
+      try { CacheService.getScriptCache().remove(FIRM_CACHE_KEY); } catch (cacheErr) {}
+      Logger.log('Updated Credit Days for ' + firmName + ' to ' + valToSet + ' at row ' + targetRow);
+      return { success: true, updated: true, row: targetRow, firmName: firmName, creditDays: valToSet };
+    } else {
+      var numCols = Math.max(FIRM_COLUMN, GST_COLUMN, CREDIT_DAYS_COLUMN);
+      var newRow = new Array(numCols).fill('');
+      newRow[targetFirmCol - 1] = firmName;
+      newRow[targetCdCol - 1] = valToSet;
+      sheet.appendRow(newRow);
+      try { CacheService.getScriptCache().remove(FIRM_CACHE_KEY); } catch (cacheErr) {}
+      Logger.log('Appended new firm ' + firmName + ' with Credit Days ' + valToSet);
+      return { success: true, appended: true, firmName: firmName, creditDays: valToSet };
+    }
+  } catch (e) {
+    Logger.log('updateFirmCreditDaysInMaster Error: ' + e.message);
     return { success: false, message: e.message };
   } finally {
     lock.releaseLock();
@@ -682,6 +762,19 @@ function processOrder(formData, timestamp) {
     Logger.log('WHATSAPP ERROR: ' + waErr.message);
   }
 
+  // Sync firm credit days to master sheet (WMS_Firms Col C)
+  try {
+    if (formData.firmName && formData.paymentTerms) {
+      var isAdv = formData.paymentTerms.toString().toUpperCase().includes('ADVANCE');
+      var cdToSync = isAdv ? 0 : parseFloat(formData.paymentDays);
+      if (!isNaN(cdToSync) && cdToSync >= 0) {
+        updateFirmCreditDaysInMaster(formData.firmName, cdToSync);
+      }
+    }
+  } catch(cdErr) {
+    Logger.log('Credit days sync error (processOrder): ' + cdErr.message);
+  }
+
   return {
     success: true,
     formNumber: formData.formNumber,
@@ -868,6 +961,19 @@ function updateOrder(formData, timestamp) {
     sendWhatsAppOrder(formData, built.grandTotal, built.netVal, built.gstSummary, built.freightSummary, built.totalDiscSummary, built.grossVal, pdfUrl, true);
   } catch(waErr) {
     Logger.log('WHATSAPP ERROR (update): ' + waErr.message);
+  }
+
+  // Sync updated credit days to master sheet (WMS_Firms Col C)
+  try {
+    if (formData.firmName && formData.paymentTerms) {
+      var isAdv = formData.paymentTerms.toString().toUpperCase().includes('ADVANCE');
+      var cdToSync = isAdv ? 0 : parseFloat(formData.paymentDays);
+      if (!isNaN(cdToSync) && cdToSync >= 0) {
+        updateFirmCreditDaysInMaster(formData.firmName, cdToSync);
+      }
+    }
+  } catch(cdErr) {
+    Logger.log('Credit days sync error (updateOrder): ' + cdErr.message);
   }
 
   return {
@@ -1453,6 +1559,12 @@ function testFolderCreation() {
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
+
+    if (data.action === 'updateCreditDays') {
+      var cdResult = updateFirmCreditDaysInMaster(data.firmName, data.creditDays);
+      return ContentService.createTextOutput(JSON.stringify(cdResult))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
 
     var isUpdate = (data.isUpdate === true || data.isUpdate === 'true' || data.action === 'updateOrder');
 
