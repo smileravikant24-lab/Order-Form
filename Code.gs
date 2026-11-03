@@ -73,6 +73,12 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
+    if (e.parameter.action === 'fixShiftedRows') {
+    var fixResult = fixShiftedRows773_774();
+    return ContentService.createTextOutput(JSON.stringify(fixResult))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   if (e.parameter.action === 'getOrderByFormNumber') {
     var result = getOrderByFormNumber(e.parameter.formNumber);
     return ContentService.createTextOutput(JSON.stringify(result))
@@ -458,7 +464,7 @@ var ORDER_DETAIL_HEADERS = [
   'Transport Mode', 'Transport Name', 'Transporter Number', 'Vehicle Number', 'Driver Number',
   'Product Name', 'Ream Qty', 'Box Qty', 'Original Rate', 'Discount', 'Net Rate', 'Freight (Item)',
   'Item Value', 'Item Value + Freight', 'GST (18%)', 'Item Grand Total',
-  'Remarks', 'Filled By (Name)', 'PDF URL'
+  'Remarks', 'Form Filler Name', 'PDF URL'
 ];
 
 var ORDER_SUMMARY_HEADERS = [
@@ -469,7 +475,7 @@ var ORDER_SUMMARY_HEADERS = [
   'Items (Name | Ream | Box | Rate)', 'Total Reams', 'Total Boxes',
   'Gross Value', 'Total Discount', 'Net Value',
   'Freight', 'GST (18%)', 'Grand Total',
-  'Remarks', 'Filled By (Name)', 'PDF URL'
+  'Remarks', 'Form Filler Name', 'PDF URL'
 ];
 
 // Builds the detail + summary rows for an order without touching the sheet.
@@ -769,6 +775,12 @@ function updateOrder(formData, timestamp) {
     applyBatchRowFormat(detailSheet, detailStartRow + detailCount, extraToAdd, numCols);
   }
 
+  // Clear any shifted ghost columns beyond numCols for these updated rows
+  var maxCols = Math.max(detailSheet.getLastColumn(), numCols + 2);
+  if (maxCols > numCols) {
+    detailSheet.getRange(detailStartRow, numCols + 1, newRowCount, maxCols - numCols).clearContent();
+  }
+
   // IN-PLACE UPDATE IN 'Orders_Summary' SHEET (SAME ROW):
   var summaryRowIdx = -1;
   var sLastRow = summarySheet.getLastRow();
@@ -787,6 +799,10 @@ function updateOrder(formData, timestamp) {
     // In-place overwrite of summary row! No delete, no insert!
     summarySheet.getRange(summaryRowIdx, 1, 1, built.summaryHeaders.length).setValues([built.summaryRow]);
     applyBatchRowFormat(summarySheet, summaryRowIdx, 1, built.summaryHeaders.length);
+    var sMaxCols = Math.max(summarySheet.getLastColumn(), built.summaryHeaders.length + 2);
+    if (sMaxCols > built.summaryHeaders.length) {
+      summarySheet.getRange(summaryRowIdx, built.summaryHeaders.length + 1, 1, sMaxCols - built.summaryHeaders.length).clearContent();
+    }
   } else {
     // If not found in summary, insert at bottom of summary
     var sInsertAt = summarySheet.getLastRow() + 1;
@@ -889,14 +905,42 @@ function getOrderByFormNumber(query) {
     discount: findColIndex(['Discount', 'Flat Discount'], 22),
     netRate: findColIndex(['Net Rate', 'Rate'], 23),
     freight: findColIndex(['Freight (Item)', 'Freight'], 24),
+    itemValue: findColIndex(['Item Value'], 25),
+    itemValueFreight: findColIndex(['Item Value + Freight'], 26),
+    gst: findColIndex(['GST (18%)', 'GST'], 27),
+    itemGrandTotal: findColIndex(['Item Grand Total'], 28),
     remarks: findColIndex(['Remarks', 'Remark'], 29),
-    filledBy: findColIndex(['Filled By (Name)', 'Form Filled By', 'Filled By', 'User'], 30),
+    filledBy: findColIndex(['Form Filler Name', 'Filled By (Name)', 'Form Filled By', 'Filled By', 'User'], 30),
+    pdfUrl: findColIndex(['PDF URL', 'PDF'], 31),
     email: findColIndex(['eMail Address', 'Email Address', 'Email', 'eMail'], -1)
   };
 
   function getCell(row, idx) {
     if (idx === -1 || idx === undefined || !row || idx >= row.length) return '';
     return row[idx];
+  }
+
+  // Detects if a specific row has been shifted right by 1 column starting from Column H (index 7)
+  function isRowShifted(r) {
+    if (!r) return false;
+    var spVal = (getCell(r, col.salesPerson) || '').toString().trim();
+    var odVal = (getCell(r, col.orderDate) || '').toString().trim();
+    if (!spVal && odVal) {
+      if (/^(MR\.|MS\.|DA)/i.test(odVal) || SALES_PERSONS.indexOf(odVal.toUpperCase()) !== -1) {
+        return true;
+      }
+      var ddVal = (getCell(r, col.deliveryDate) || '').toString().trim();
+      if (ddVal && !/^\d{4}-\d{2}-\d{2}/.test(odVal) && !/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(odVal)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function getRowVal(r, colIdx, shifted) {
+    if (colIdx === -1 || colIdx === undefined || !r) return '';
+    var actualIdx = (shifted && colIdx >= col.salesPerson) ? (colIdx + 1) : colIdx;
+    return getCell(r, actualIdx);
   }
 
   // Distinct PI numbers in the sheet, most-recently-added first.
@@ -953,6 +997,7 @@ function getOrderByFormNumber(query) {
   }
 
   var first = matchedRows[0];
+  var firstShifted = isRowShifted(first);
 
   var toISODate = function(v) {
     if (!v) return '';
@@ -975,50 +1020,54 @@ function getOrderByFormNumber(query) {
   };
 
   var items = matchedRows.map(function(r) {
-    var origR = parseFloat(getCell(r, col.origRate)) || 0;
-    var netR = parseFloat(getCell(r, col.netRate)) || 0;
+    var rShifted = isRowShifted(r);
+    var origR = parseFloat(getRowVal(r, col.origRate, rShifted)) || 0;
+    var netR = parseFloat(getRowVal(r, col.netRate, rShifted)) || 0;
     return {
-      name: getCell(r, col.productName) || '',
-      ream: parseFloat(getCell(r, col.ream)) || 0,
-      box: parseFloat(getCell(r, col.box)) || 0,
+      name: getRowVal(r, col.productName, rShifted) || '',
+      ream: parseFloat(getRowVal(r, col.ream, rShifted)) || 0,
+      box: parseFloat(getRowVal(r, col.box, rShifted)) || 0,
       origRate: origR || netR || 0,
       rate: netR || origR || 0,
-      discount: parseFloat(getCell(r, col.discount)) || 0
+      discount: parseFloat(getRowVal(r, col.discount, rShifted)) || 0
     };
   });
 
   var totalFreight = 0;
   if (col.freight !== -1) {
-    matchedRows.forEach(function(r) { totalFreight += parseFloat(getCell(r, col.freight)) || 0; });
+    matchedRows.forEach(function(r) {
+      var rShifted = isRowShifted(r);
+      totalFreight += parseFloat(getRowVal(r, col.freight, rShifted)) || 0;
+    });
   }
 
-  var tsVal = getCell(first, col.timestamp);
-  var filledByVal = getCell(first, col.filledBy);
+  var tsVal = getRowVal(first, col.timestamp, firstShifted);
+  var filledByVal = getRowVal(first, col.filledBy, firstShifted);
 
   var order = {
     rowNumber: firstMatchedRowIndex,
     itemCount: matchedRows.length,
     formNumber: formNumber,
     timestamp: (tsVal instanceof Date) ? tsVal.toISOString() : (tsVal || ''),
-    firmName: getCell(first, col.firmName) || '',
-    gstNo: getCell(first, col.gstNo) || '',
-    areaName: getCell(first, col.area) || '',
-    customerName: getCell(first, col.customerName) || '',
-    whatsapp: getCell(first, col.whatsapp) || '',
-    email: col.email !== -1 ? (getCell(first, col.email) || '') : '',
-    salesPerson: getCell(first, col.salesPerson) || '',
-    orderDateISO: toISODate(getCell(first, col.orderDate)),
-    deliveryDateISO: toISODate(getCell(first, col.deliveryDate)),
-    clientType: getCell(first, col.clientType) || '',
-    paymentTerms: getCell(first, col.paymentTerms) || '',
-    paymentDays: getCell(first, col.paymentDays) || '',
-    transportMode: getCell(first, col.transportMode) || '',
-    transportName: getCell(first, col.transportName) || '',
-    transporterNumber: getCell(first, col.transporterNumber) || '',
-    vehicleNumber: getCell(first, col.vehicleNumber) || '',
-    driverNumber: getCell(first, col.driverNumber) || '',
+    firmName: getRowVal(first, col.firmName, firstShifted) || '',
+    gstNo: getRowVal(first, col.gstNo, firstShifted) || '',
+    areaName: getRowVal(first, col.area, firstShifted) || '',
+    customerName: getRowVal(first, col.customerName, firstShifted) || '',
+    whatsapp: getRowVal(first, col.whatsapp, firstShifted) || '',
+    email: col.email !== -1 ? (getRowVal(first, col.email, firstShifted) || '') : '',
+    salesPerson: getRowVal(first, col.salesPerson, firstShifted) || '',
+    orderDateISO: toISODate(getRowVal(first, col.orderDate, firstShifted)),
+    deliveryDateISO: toISODate(getRowVal(first, col.deliveryDate, firstShifted)),
+    clientType: getRowVal(first, col.clientType, firstShifted) || '',
+    paymentTerms: getRowVal(first, col.paymentTerms, firstShifted) || '',
+    paymentDays: getRowVal(first, col.paymentDays, firstShifted) || '',
+    transportMode: getRowVal(first, col.transportMode, firstShifted) || '',
+    transportName: getRowVal(first, col.transportName, firstShifted) || '',
+    transporterNumber: getRowVal(first, col.transporterNumber, firstShifted) || '',
+    vehicleNumber: getRowVal(first, col.vehicleNumber, firstShifted) || '',
+    driverNumber: getRowVal(first, col.driverNumber, firstShifted) || '',
     freightAmount: Math.round(totalFreight * 100) / 100,
-    remarks: getCell(first, col.remarks) || '',
+    remarks: getRowVal(first, col.remarks, firstShifted) || '',
     filledBy: filledByVal || '',
     formFilledBy: filledByVal || '',
     filledByEmail: filledByVal || '',
@@ -1532,4 +1581,96 @@ function removeTestOrders(testFnos) {
       }
     }
   });
+}
+
+
+// Utility to directly repair shifted rows (such as PO 773, 774) in the sheet.
+// Can be run directly from Google Apps Script Editor with 1-click OR called via URL action=fixShiftedRows.
+function fixShiftedRows773_774() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var fixedDetails = [];
+  var fixedSummaries = [];
+
+  // 1. Fix in 'Orders' sheet
+  var detailSheet = ss.getSheetByName('Orders');
+  if (detailSheet) {
+    var dLastRow = detailSheet.getLastRow();
+    var dLastCol = Math.max(detailSheet.getLastColumn(), 33);
+    if (dLastRow >= 2) {
+      var dRange = detailSheet.getRange(2, 1, dLastRow - 1, dLastCol);
+      var dValues = dRange.getValues();
+
+      for (var i = 0; i < dValues.length; i++) {
+        var row = dValues[i];
+        var rowNum = i + 2;
+        var formNo = (row[1] || '').toString().trim(); // Col B (Form No)
+        var spVal = (row[7] || '').toString().trim();  // Col H (Sales Person)
+        var odVal = (row[8] || '').toString().trim();  // Col I (Order Date)
+
+        // Check if shifted: Col H is empty AND (matches 773/774 OR odVal looks like a person name / not date)
+        var isTarget = formNo.includes('00773') || formNo.includes('00774') || /773|774/.test(formNo);
+        var looksShifted = (!spVal && odVal && (/^(MR\.|MS\.|DA)/i.test(odVal) || SALES_PERSONS.indexOf(odVal.toUpperCase()) !== -1));
+
+        if (isTarget || looksShifted) {
+          // Columns 9..dLastCol shift left into Columns 8..dLastCol-1
+          var updatedRow = row.slice();
+          for (var c = 7; c < updatedRow.length - 1; c++) {
+            updatedRow[c] = updatedRow[c + 1];
+          }
+          updatedRow[updatedRow.length - 1] = ''; // blank out the trailing column
+
+          // Update columns 8 to dLastCol in this row
+          var shiftLength = dLastCol - 7;
+          var newSlice = [updatedRow.slice(7, dLastCol)];
+          detailSheet.getRange(rowNum, 8, 1, shiftLength).setValues(newSlice);
+
+          fixedDetails.push({ row: rowNum, formNo: formNo });
+        }
+      }
+    }
+  }
+
+  // 2. Fix in 'Orders_Summary' sheet
+  var summarySheet = ss.getSheetByName('Orders_Summary');
+  if (summarySheet) {
+    var sLastRow = summarySheet.getLastRow();
+    var sLastCol = Math.max(summarySheet.getLastColumn(), 31);
+    if (sLastRow >= 2) {
+      var sRange = summarySheet.getRange(2, 1, sLastRow - 1, sLastCol);
+      var sValues = sRange.getValues();
+
+      for (var j = 0; j < sValues.length; j++) {
+        var sRow = sValues[j];
+        var sRowNum = j + 2;
+        var sFormNo = (sRow[1] || '').toString().trim();
+        var sSpVal = (sRow[7] || '').toString().trim();
+        var sOdVal = (sRow[8] || '').toString().trim();
+
+        var sIsTarget = sFormNo.includes('00773') || sFormNo.includes('00774') || /773|774/.test(sFormNo);
+        var sLooksShifted = (!sSpVal && sOdVal && (/^(MR\.|MS\.|DA)/i.test(sOdVal) || SALES_PERSONS.indexOf(sOdVal.toUpperCase()) !== -1));
+
+        if (sIsTarget || sLooksShifted) {
+          var updatedSRow = sRow.slice();
+          for (var sc = 7; sc < updatedSRow.length - 1; sc++) {
+            updatedSRow[sc] = updatedSRow[sc + 1];
+          }
+          updatedSRow[updatedSRow.length - 1] = '';
+
+          var sShiftLength = sLastCol - 7;
+          var sNewSlice = [updatedSRow.slice(7, sLastCol)];
+          summarySheet.getRange(sRowNum, 8, 1, sShiftLength).setValues(sNewSlice);
+
+          fixedSummaries.push({ row: sRowNum, formNo: sFormNo });
+        }
+      }
+    }
+  }
+
+  Logger.log('FIX RESULT: ' + JSON.stringify({ fixedDetails: fixedDetails, fixedSummaries: fixedSummaries }));
+  return {
+    success: true,
+    message: 'Shifted rows (773, 774) fixed successfully!',
+    fixedDetails: fixedDetails,
+    fixedSummaries: fixedSummaries
+  };
 }
