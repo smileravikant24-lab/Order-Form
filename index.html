@@ -848,9 +848,11 @@ function applyInitialData(data){
       cdVal = cd !== undefined && cd !== null ? String(cd).trim() : '';
     }
 
-    // Apply persistent user override if present
+    // Master data from WMS_Firms is primary:
+    // If master has creditDays (from Column C), keep it!
+    // Only if master has no creditDays (empty string) AND an override exists, use override.
     var norm = nameVal.trim().toLowerCase();
-    if(overrides[norm] !== undefined && overrides[norm].creditDays !== undefined){
+    if((cdVal === '' || cdVal === undefined) && overrides[norm] !== undefined && overrides[norm].creditDays !== undefined){
       cdVal = overrides[norm].creditDays;
     }
 
@@ -1104,7 +1106,8 @@ function autoFillGST(firmName){
     if(cdRaw !== undefined && cdRaw !== null && String(cdRaw).trim() !== ''){
       var cdStr = String(cdRaw).trim();
       var cdNum = parseFloat(cdStr);
-      if(cdStr === '0' || cdNum === 0){
+      var isAdvance = (cdStr === '0' || cdNum === 0 || /advance/i.test(cdStr));
+      if(isAdvance){
         // 0 means Advance Payment
         if(pTermsEl) pTermsEl.value = 'Advance Payment';
         if(pdF) pdF.classList.add('hd');

@@ -2,6 +2,7 @@
 var FIRM_SHEET_NAME = 'WMS_Firms';
 var FIRM_COLUMN     = 1;
 var GST_COLUMN      = 2;
+var CREDIT_DAYS_COLUMN = 3;
 
 // Product master lives as a second tab in the same master spreadsheet as
 // the firm master. New products confirmed by the user (see
@@ -213,7 +214,7 @@ function getCurrentFY() {
   return String(startYear).slice(-2) + '-' + String(startYear + 1).slice(-2);
 }
 
-var FIRM_CACHE_KEY = 'FIRM_DATA_CACHE_V1';
+var FIRM_CACHE_KEY = 'FIRM_DATA_CACHE_V2';
 var FIRM_CACHE_SECONDS = 300; // 5 min
 
 function getFirmData() {
@@ -226,13 +227,41 @@ function getFirmData() {
     var sheet = externalSS.getSheetByName(FIRM_SHEET_NAME) || externalSS.getSheets()[0];
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return [];
-    var colsToRead = Math.max(FIRM_COLUMN, GST_COLUMN);
+
+    var lastCol = Math.max(sheet.getLastColumn(), 3);
+    var headerRow = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+    function findColIndex(candidates, fallback) {
+      for (var c = 0; c < candidates.length; c++) {
+        var target = candidates[c].toLowerCase().replace(/[^a-z0-9]/g, '');
+        for (var h = 0; h < headerRow.length; h++) {
+          var hStr = (headerRow[h] || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (hStr === target) return h;
+        }
+      }
+      return (typeof fallback === 'number' && fallback < lastCol) ? fallback : -1;
+    }
+
+    var firmIdx = findColIndex(['Firm Name', 'Firm', 'Party Name'], FIRM_COLUMN - 1);
+    var gstIdx  = findColIndex(['GST IN', 'GST No', 'GST', 'GSTIN'], GST_COLUMN - 1);
+    var cdIdx   = findColIndex(['Credit Days', 'CreditDays', 'Payment Days', 'Days', 'Credit'], 2);
+
+    var colsToRead = Math.max(firmIdx + 1, gstIdx + 1, cdIdx + 1, 3);
     var values = sheet.getRange(2, 1, lastRow - 1, colsToRead).getValues();
     var result = [];
     for (var i = 0; i < values.length; i++) {
-      var firmName = (values[i][FIRM_COLUMN - 1] || '').toString().trim().toUpperCase();
-      var gstNo    = (values[i][GST_COLUMN - 1]  || '').toString().trim().toUpperCase();
-      if (firmName) result.push({ name: firmName, gst: gstNo });
+      var firmName = (firmIdx !== -1 && values[i][firmIdx] !== undefined ? values[i][firmIdx] : '').toString().trim().toUpperCase();
+      var gstNo    = (gstIdx !== -1 && values[i][gstIdx] !== undefined ? values[i][gstIdx] : '').toString().trim().toUpperCase();
+      var cdVal    = (cdIdx !== -1 && values[i][cdIdx] !== undefined && values[i][cdIdx] !== null)
+                     ? String(values[i][cdIdx]).trim()
+                     : '';
+      if (firmName) {
+        result.push({
+          name: firmName,
+          gst: gstNo,
+          creditDays: cdVal
+        });
+      }
     }
     try { cache.put(FIRM_CACHE_KEY, JSON.stringify(result), FIRM_CACHE_SECONDS); } catch (cacheErr) { Logger.log('Firm cache put error: ' + cacheErr.message); }
     return result;
@@ -244,12 +273,14 @@ function getFirmData() {
       if (!localSheet) return [];
       var lr = localSheet.getLastRow();
       if (lr < 2) return [];
-      var vals = localSheet.getRange(2, 1, lr - 1, 2).getValues();
+      var lc = Math.max(localSheet.getLastColumn(), 3);
+      var vals = localSheet.getRange(2, 1, lr - 1, lc).getValues();
       var res = [];
       for (var j = 0; j < vals.length; j++) {
         var fn = (vals[j][0] || '').toString().trim().toUpperCase();
         var gn = (vals[j][1] || '').toString().trim().toUpperCase();
-        if (fn) res.push({ name: fn, gst: gn });
+        var cd = (vals[j][2] !== undefined && vals[j][2] !== null) ? String(vals[j][2]).trim() : '';
+        if (fn) res.push({ name: fn, gst: gn, creditDays: cd });
       }
       return res;
     } catch(e2) { return []; }
