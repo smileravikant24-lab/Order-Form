@@ -341,48 +341,10 @@ function getProductData() {
 // Adds a party the user has confirmed is new to the WMS_Firms master
 // sheet (the same sheet getFirmData() reads from). Silently no-ops if the
 // name is already present (case-insensitive) so a retry can't duplicate it.
+// STRICT: New firms cannot be added from Order Form. Master firm list is restricted to pre-approved firms.
 function addNewFirmToMaster(name, gst, creditDays) {
-  name = (name || '').toString().trim().toUpperCase();
-  gst = (gst || '').toString().trim().toUpperCase();
-  if (!name) return { success: false, message: 'Firm name required.' };
-
-  var lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(10000);
-    var externalSS = SpreadsheetApp.openByUrl(FIRM_SHEET_URL);
-    var sheet = externalSS.getSheetByName(FIRM_SHEET_NAME) || externalSS.getSheets()[0];
-    var lastRow = sheet.getLastRow();
-
-    if (lastRow >= 2) {
-      var existing = sheet.getRange(2, FIRM_COLUMN, lastRow - 1, 1).getValues();
-      for (var i = 0; i < existing.length; i++) {
-        if ((existing[i][0] || '').toString().trim().toUpperCase() === name) {
-          if (creditDays !== undefined && creditDays !== null && creditDays !== '') {
-            var cdCol = CREDIT_DAYS_COLUMN || 3;
-            var numVal = parseFloat(creditDays);
-            sheet.getRange(i + 2, cdCol).setValue(!isNaN(numVal) ? numVal : creditDays);
-            try { CacheService.getScriptCache().remove(FIRM_CACHE_KEY); } catch (cacheErr) {}
-          }
-          return { success: true, alreadyExists: true };
-        }
-      }
-    }
-
-    var numCols = Math.max(FIRM_COLUMN, GST_COLUMN, CREDIT_DAYS_COLUMN);
-    var newRow = new Array(numCols).fill('');
-    newRow[FIRM_COLUMN - 1] = name;
-    newRow[GST_COLUMN - 1] = gst;
-    var cdNum = parseFloat(creditDays);
-    newRow[CREDIT_DAYS_COLUMN - 1] = (!isNaN(cdNum) && cdNum >= 0) ? cdNum : 0;
-    sheet.appendRow(newRow);
-    try { CacheService.getScriptCache().remove(FIRM_CACHE_KEY); } catch (cacheErr) {}
-    return { success: true };
-  } catch (e) {
-    Logger.log('addNewFirmToMaster Error: ' + e.message);
-    return { success: false, message: e.message };
-  } finally {
-    lock.releaseLock();
-  }
+  Logger.log('Blocked attempt to add new firm: ' + name);
+  return { success: false, message: 'New firms cannot be added from Order Form. Master firm list is strictly restricted.' };
 }
 
 // Updates or adds the Credit Days for a firm directly in WMS_Firms master sheet (Column C)
@@ -434,14 +396,9 @@ function updateFirmCreditDaysInMaster(firmName, creditDays) {
       Logger.log('Updated Credit Days for ' + firmName + ' to ' + valToSet + ' at row ' + targetRow);
       return { success: true, updated: true, row: targetRow, firmName: firmName, creditDays: valToSet };
     } else {
-      var numCols = Math.max(FIRM_COLUMN, GST_COLUMN, CREDIT_DAYS_COLUMN);
-      var newRow = new Array(numCols).fill('');
-      newRow[targetFirmCol - 1] = firmName;
-      newRow[targetCdCol - 1] = valToSet;
-      sheet.appendRow(newRow);
-      try { CacheService.getScriptCache().remove(FIRM_CACHE_KEY); } catch (cacheErr) {}
-      Logger.log('Appended new firm ' + firmName + ' with Credit Days ' + valToSet);
-      return { success: true, appended: true, firmName: firmName, creditDays: valToSet };
+      // STRICT: Firm must exist in WMS_Firms. Do NOT append or create new firm!
+      Logger.log('updateFirmCreditDaysInMaster: Firm not found in master sheet: ' + firmName);
+      return { success: false, message: 'Firm not found in master sheet: ' + firmName };
     }
   } catch (e) {
     Logger.log('updateFirmCreditDaysInMaster Error: ' + e.message);
@@ -711,7 +668,31 @@ function buildOrderRowsAndSummary(formData, timestamp) {
 }
 
 
+// STRICT VALIDATION: Validates that a firm name exists in WMS_Firms master list
+function validateFirmExistsInMaster(firmName) {
+  var raw = (firmName || '').toString().trim();
+  if (!raw) return { valid: false, message: 'Firm Name zaroori hai!' };
+  var clean = cleanOrderText(raw);
+  var firms = getFirmData();
+  for (var i = 0; i < firms.length; i++) {
+    if (cleanOrderText(firms[i].name) === clean) {
+      return { valid: true, exactName: firms[i].name, gst: firms[i].gst, creditDays: firms[i].creditDays };
+    }
+  }
+  return {
+    valid: false,
+    message: 'Firm "' + raw + '" master list (WMS_Firms) me nahi mili! Bina list wali firm na add ho sakti hai, na save ho sakti hai.'
+  };
+}
+
 function processOrder(formData, timestamp) {
+  var firmVal = validateFirmExistsInMaster(formData.firmName);
+  if (!firmVal.valid) {
+    return { success: false, message: firmVal.message };
+  }
+  formData.firmName = firmVal.exactName;
+  if (!formData.gstNo && firmVal.gst) formData.gstNo = firmVal.gst;
+
   var items = formData.items || [];
   if (!items.length) return { success: false, message: 'KOI ITEM NAHI MILA.' };
 
@@ -793,6 +774,13 @@ function cleanOrderText(str) {
 // No row deletion/insertion if row count is unchanged.
 // NEVER creates a new entry at the bottom.
 function updateOrder(formData, timestamp) {
+  var firmVal = validateFirmExistsInMaster(formData.firmName);
+  if (!firmVal.valid) {
+    return { success: false, message: firmVal.message };
+  }
+  formData.firmName = firmVal.exactName;
+  if (!formData.gstNo && firmVal.gst) formData.gstNo = firmVal.gst;
+
   var items = formData.items || [];
   if (!items.length) return { success: false, message: 'KOI ITEM NAHI MILA.' };
 
@@ -1216,6 +1204,15 @@ function getOrderByFormNumber(query) {
 
 
 function processEnquiry(formData, timestamp) {
+  if (formData.firmName && formData.firmName.trim()) {
+    var firmVal = validateFirmExistsInMaster(formData.firmName);
+    if (!firmVal.valid) {
+      return { success: false, message: firmVal.message };
+    }
+    formData.firmName = firmVal.exactName;
+    if (!formData.gstNo && firmVal.gst) formData.gstNo = firmVal.gst;
+  }
+
   var headers = [
     'Timestamp', 'Form No', 'Firm Name', 'GST No', 'Area', 'Customer Name',
     'WhatsApp', 'Client Type', 'Client Source', 'Reference Name', 'Sales Person',

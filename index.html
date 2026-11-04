@@ -229,10 +229,10 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
     <div class="g2">
       <div class="fld" style="position:relative">
         <label class="lbl">Name of Firm <span class="r">*</span></label>
-        <input class="inp" id="firmName" placeholder="Search or type firm name..." required autocomplete="off"
+        <input class="inp" id="firmName" placeholder="Search and select firm from list..." required autocomplete="off"
         oninput="onFirmInput(this.value)"
         onfocus="onFirmInput(this.value)"
-        onblur="autoFillGST(this.value);hideFirmDD()">
+        onblur="setTimeout(validateFirmOnBlur, 200);hideFirmDD()">
         <div class="firm-dd" id="firmDD"></div>
         <div id="gstBadgeWrap" style="display:none"><span class="gst-badge">&#128196; GST: <span id="gstBadgeVal"></span></span></div>
       </div>
@@ -712,7 +712,7 @@ function fetchJsonRetry(url,options,attempts,delayMs){
   });
 }
 
-var INITIAL_DATA_CACHE_KEY='spInitialDataCache_v3';
+var INITIAL_DATA_CACHE_KEY='spInitialDataCache_v4';
 var FIRM_CREDIT_OVERRIDES_KEY='sp_firm_credit_overrides';
 
 function getFirmCreditOverrides(){
@@ -753,13 +753,21 @@ function updateCreditDaysUIBadge(firmName, cdStr, termsVal, isUserOverride){
 function saveFirmCreditOverride(firmName, creditDaysVal, termsVal){
   if(!firmName || !firmName.trim()) return;
   var norm = firmName.trim().toLowerCase();
+
+  // STRICT: Only allow registered master firms! Unknown firms are ignored.
+  var firms = window._firmData || [];
+  var matchedFirm = firms.find(function(f){
+    return (f.name || '').trim().toLowerCase() === norm;
+  });
+  if(!matchedFirm) return; // Do NOT push, do NOT register, do NOT override unknown firms!
+
   var overrides = getFirmCreditOverrides();
   var cdStr = creditDaysVal !== undefined && creditDaysVal !== null ? String(creditDaysVal).trim() : '';
 
   overrides[norm] = {
     creditDays: cdStr,
     paymentTerms: termsVal || (cdStr === '0' || cdStr === '' ? 'Advance Payment' : 'Credit Days'),
-    firmName: firmName.trim(),
+    firmName: matchedFirm.name,
     updatedAt: Date.now()
   };
 
@@ -767,24 +775,8 @@ function saveFirmCreditOverride(firmName, creditDaysVal, termsVal){
     localStorage.setItem(FIRM_CREDIT_OVERRIDES_KEY, JSON.stringify(overrides));
   }catch(e){}
 
-  // 1. Update in-memory window._firmData
-  if(window._firmData && Array.isArray(window._firmData)){
-    var found = false;
-    window._firmData.forEach(function(f){
-      if((f.name || '').trim().toLowerCase() === norm){
-        f.creditDays = cdStr;
-        found = true;
-      }
-    });
-    if(!found){
-      var gstField = document.getElementById('gstNo');
-      window._firmData.push({
-        name: firmName.trim(),
-        gst: gstField ? (gstField.value || '') : '',
-        creditDays: cdStr
-      });
-    }
-  }
+  // 1. Update in-memory window._firmData for matchedFirm only
+  matchedFirm.creditDays = cdStr;
 
   // 2. Update cached initial data
   try{
@@ -792,22 +784,13 @@ function saveFirmCreditOverride(firmName, creditDaysVal, termsVal){
     if(rawCache){
       var parsedCache = JSON.parse(rawCache);
       if(parsedCache && parsedCache.data && Array.isArray(parsedCache.data.firms)){
-        var cFound = false;
         parsedCache.data.firms.forEach(function(cf){
           var cName = (Array.isArray(cf) ? cf[0] : cf.name) || '';
           if(String(cName).trim().toLowerCase() === norm){
             if(Array.isArray(cf)) cf[2] = cdStr;
             else cf.creditDays = cdStr;
-            cFound = true;
           }
         });
-        if(!cFound){
-          parsedCache.data.firms.push({
-            name: firmName.trim(),
-            gst: document.getElementById('gstNo') ? document.getElementById('gstNo').value : '',
-            creditDays: cdStr
-          });
-        }
         localStorage.setItem(INITIAL_DATA_CACHE_KEY, JSON.stringify(parsedCache));
       }
     }
@@ -819,14 +802,14 @@ function saveFirmCreditOverride(firmName, creditDaysVal, termsVal){
       method: 'POST',
       body: JSON.stringify({
         action: 'updateCreditDays',
-        firmName: firmName.trim(),
+        firmName: matchedFirm.name,
         creditDays: cdStr,
         paymentTerms: termsVal || (cdStr === '0' || cdStr === '' ? 'Advance Payment' : 'Credit Days')
       })
     }).catch(function(){});
   }catch(e){}
 
-  updateCreditDaysUIBadge(firmName, cdStr, termsVal, true);
+  updateCreditDaysUIBadge(matchedFirm.name, cdStr, termsVal, true);
 }
 
 function applyInitialData(data){
@@ -862,19 +845,8 @@ function applyInitialData(data){
     };
   });
 
-  // Include any new firms that exist in overrides but not yet in backend firms
-  Object.keys(overrides).forEach(function(normKey){
-    var exists = window._firmData.some(function(f){
-      return (f.name || '').trim().toLowerCase() === normKey;
-    });
-    if(!exists && overrides[normKey].firmName){
-      window._firmData.push({
-        name: overrides[normKey].firmName,
-        gst: '',
-        creditDays: overrides[normKey].creditDays || ''
-      });
-    }
-  });
+  // STRICT: Only firms present in WMS_Firms master sheet are allowed.
+  // Overrides can only apply to existing master firms, never create new ones.
 
   window._firmDataLoaded = true;
   var existingFirm = document.getElementById('firmName').value;
@@ -1071,6 +1043,36 @@ function selectProduct(itemEl,name){
   dd.classList.remove('show');
   onProdChange(inp);
 }
+function validateFirmOnBlur(){
+  var inp = document.getElementById('firmName');
+  if(!inp) return;
+  var val = (inp.value || '').trim();
+  if(!val){
+    autoFillGST('');
+    return;
+  }
+  var firms = window._firmData || [];
+  var match = firms.find(function(f){
+    return (f.name || '').trim().toLowerCase() === val.toLowerCase();
+  });
+  if(match){
+    inp.value = match.name;
+    autoFillGST(match.name);
+  } else {
+    var subMatches = firms.filter(function(f){
+      return (f.name || '').trim().toLowerCase().indexOf(val.toLowerCase()) !== -1;
+    });
+    if(subMatches.length === 1){
+      inp.value = subMatches[0].name;
+      autoFillGST(subMatches[0].name);
+    } else {
+      inp.value = '';
+      autoFillGST('');
+      showCustomAlert('Firm List Me Nahi Hai', 'Aapne jo firm type ki hai wo master list me nahi mili.<br><br><strong>Kripya dropdown list me se hi firm select karein.</strong> Bina list wali firm na add hogi, na save hogi.');
+    }
+  }
+}
+
 function autoFillGST(firmName){
   var gstField=document.getElementById('gstNo');
   var badgeWrap=document.getElementById('gstBadgeWrap');
@@ -1082,12 +1084,13 @@ function autoFillGST(firmName){
 
   if(!gstField||!firmName||!firmName.trim()){
     if(badge) badge.style.display='none';
+    if(gstField) gstField.value='';
+    if(badgeWrap) badgeWrap.style.display='none';
     return;
   }
   var firms=window._firmData||[];
   var val=firmName.trim().toLowerCase();
   var match=firms.find(function(f){return (f.name||'').trim().toLowerCase()===val;});
-  if(!match){match=firms.find(function(f){return (f.name||'').trim().toLowerCase().startsWith(val);});}
   if(match){
     gstField.value=match.gst||'';
     if(match.gst && match.gst!=='-'){
@@ -1555,10 +1558,12 @@ function isKnownFirm(name){
   return firms.some(function(f){return (f.name||'').trim().toUpperCase()===upper;});
 }
 async function confirmAndRegisterNewFirm(name,gst){
-  var trimmedName=(name||'').trim();
+  var trimmedName=(name||'').trim().toUpperCase();
   if(!trimmedName)return false;
-  if(isKnownFirm(trimmedName))return true;
-  await showCustomAlert('Party List Me Nahi Hai','Party "'+escHtml(trimmedName)+'" master list me nahi hai.<br><br>Kripya dropdown list se hi sahi party select karein.');
+  var firms=window._firmData||[];
+  var match=firms.find(function(f){return (f.name||'').trim().toUpperCase()===trimmedName;});
+  if(match)return true;
+  await showCustomAlert('Firm List Me Nahi Hai','Party "'+escHtml(name)+'" master list me nahi mili.<br><br><strong>Bina list wali firm na add ho sakti hai, na save ho sakti hai.</strong><br>Kripya dropdown list me se hi valid party select karein.');
   return false;
 }
 function isKnownProduct(name){
@@ -1626,14 +1631,19 @@ async function sub(e){
     return;
   }
 
-  var firmNameVal=tp(document.getElementById('firmName').value);
-  var gstVal=document.getElementById('gstNo').value.trim();
-  if(!(await confirmAndRegisterNewFirm(firmNameVal,gstVal))){
+  var rawFirmVal=(document.getElementById('firmName').value||'').trim();
+  var firms=window._firmData||[];
+  var matchedMasterFirm=firms.find(function(f){return (f.name||'').trim().toLowerCase()===rawFirmVal.toLowerCase();});
+  if(!matchedMasterFirm){
     sMsg.className='sm er';
-    sMsg.textContent='Party confirm nahi hui — submission cancel ho gaya.';
+    sMsg.textContent='Firm master list me nahi mili! Kripya list se hi select karein.';
     sMsg.classList.remove('hd');
+    await showCustomAlert('Firm List Me Nahi Hai','Party "'+escHtml(rawFirmVal)+'" master list me nahi mili.<br><br><strong>Bina list wali firm na add ho sakti hai, na save ho sakti hai.</strong><br>Kripya dropdown list se hi valid party select karein.');
+    document.getElementById('firmName').focus();
     return;
   }
+  var firmNameVal=matchedMasterFirm.name;
+  var gstVal=matchedMasterFirm.gst || document.getElementById('gstNo').value.trim();
 
   var uniqueProductNames=[];
   items.forEach(function(it){if(uniqueProductNames.indexOf(it.name)===-1)uniqueProductNames.push(it.name);});
