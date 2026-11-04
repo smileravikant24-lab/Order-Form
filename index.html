@@ -539,17 +539,28 @@ function applyProductMaster(productsList){
   IT = [];
   packingMap = {};
   window._productData = productsList;
+
+  // Pre-seed packingMap with known FALLBACK_PRODUCTS
+  FALLBACK_PRODUCTS.forEach(function(fp){
+    if(fp && fp.name){
+      packingMap[fp.name] = fp.perBox;
+      packingMap[fp.name.toUpperCase()] = fp.perBox;
+    }
+  });
+
   productsList.forEach(function(p){
     if(!p) return;
     var name = '';
-    var perBox = DEFAULT_PACKING_RATIO;
+    var perBox = null;
     if(Array.isArray(p)){
       name = p[0] ? String(p[0]).trim() : '';
-      perBox = parseFloat(p[1]) || DEFAULT_PACKING_RATIO;
+      var val = parseFloat(p[1]);
+      if(!isNaN(val) && val > 0) perBox = val;
     } else if(typeof p === 'object'){
       name = (p.name || p.productName || p.product || '').toString().trim();
-      var pb = (p.perBox !== undefined) ? p.perBox : ((p.ream !== undefined) ? p.ream : ((p.reamsPerBox !== undefined) ? p.reamsPerBox : ((p.reamPerBox !== undefined) ? p.reamPerBox : DEFAULT_PACKING_RATIO)));
-      perBox = parseFloat(pb) || DEFAULT_PACKING_RATIO;
+      var pb = (p.perBox !== undefined) ? p.perBox : ((p.ream !== undefined) ? p.ream : ((p.reamsPerBox !== undefined) ? p.reamsPerBox : p.reamPerBox));
+      var val = parseFloat(pb);
+      if(!isNaN(val) && val > 0) perBox = val;
     } else {
       name = String(p).trim();
     }
@@ -557,7 +568,13 @@ function applyProductMaster(productsList){
     var upper = name.toUpperCase();
     var exists = IT.some(function(n){ return n.toUpperCase() === upper; });
     if(!exists) IT.push(name);
+
+    // If server sent no ratio or generic 5 when product is known to be 10, use correct ratio
+    if(!perBox || (perBox === 5 && findPackingRatio(name) === 10)){
+      perBox = findPackingRatio(name);
+    }
     packingMap[name] = perBox;
+    packingMap[upper] = perBox;
   });
   window._productsLoaded = true;
 }
@@ -567,8 +584,21 @@ function findPackingRatio(pName){
   var trimmed = pName.trim();
   if(packingMap.hasOwnProperty(trimmed))return packingMap[trimmed];
   var upper=trimmed.toUpperCase();
+  if(packingMap.hasOwnProperty(upper))return packingMap[upper];
   for(var key in packingMap){if(key.toUpperCase()===upper)return packingMap[key];}
-  return null;
+  for(var f=0; f<FALLBACK_PRODUCTS.length; f++){
+    if(FALLBACK_PRODUCTS[f].name.toUpperCase()===upper)return FALLBACK_PRODUCTS[f].perBox;
+  }
+  if(upper.indexOf('REFLECTION')!==-1||upper.indexOf('SUPERPRINT')!==-1){
+    if(upper.indexOf('A3')!==-1||upper.indexOf('100 GSM')!==-1)return 5;
+    return 10;
+  }
+  if(upper.indexOf('A3')!==-1)return 5;
+  if(upper.indexOf('DOUBLE A')!==-1||upper.indexOf('PAPER ONE')!==-1||upper.indexOf('TARANG')!==-1||upper.indexOf('BILT')!==-1){
+    return upper.indexOf('100 GSM')!==-1?4:5;
+  }
+  if(upper.indexOf('A4')!==-1||upper.indexOf('FS')!==-1||upper.indexOf('COPIER')!==-1)return 10;
+  return DEFAULT_PACKING_RATIO;
 }
 function syncQty(el,type){
   var row=el.closest('.pr'),pName=row.querySelector('.p-name').value,reamInp=row.querySelector('.q-ream'),boxInp=row.querySelector('.q-box'),perBox=findPackingRatio(pName)||DEFAULT_PACKING_RATIO;
@@ -712,7 +742,7 @@ function fetchJsonRetry(url,options,attempts,delayMs){
   });
 }
 
-var INITIAL_DATA_CACHE_KEY='spInitialDataCache_v4';
+var INITIAL_DATA_CACHE_KEY='spInitialDataCache_v5';
 var FIRM_CREDIT_OVERRIDES_KEY='sp_firm_credit_overrides';
 
 function getFirmCreditOverrides(){
