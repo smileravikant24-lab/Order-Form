@@ -454,11 +454,11 @@ async function generateAndMergePDF(d){
 // SALES PERSON → EMAIL MAPPING (client-side only)
 // ══════════════════════════════════════════════════
 const SALES_EMAIL_MAP = {
-  'MR. PAWAN NEGI'    : 'pawansatijapaper@gmail.com',
-  'MR. PRANAV SATIJA' : 'pranavsatija@satijapaper.com',
-  'MR. MUKESH SHUKLA' : 'mukesh.shukla@satijapaper.com',
-  'MR. RISHABH JAIN'  : 'rishabhsatijapaper@gmail.com',
-  'MR. SONU CHAUHAN'  : 'sonusatijapaper@gmail.com',
+  'Mr. Pawan Negi'    : 'pawansatijapaper@gmail.com',
+  'Mr. Pranav Satija' : 'pranavsatija@satijapaper.com',
+  'Mr. Mukesh Shukla' : 'mukesh.shukla@satijapaper.com',
+  'Mr. Rishabh Jain'  : 'rishabhsatijapaper@gmail.com',
+  'Mr. Sonu Chauhan'  : 'sonusatijapaper@gmail.com',
   'DA DD'             : ''
 };
 
@@ -636,8 +636,8 @@ window._firmDataLoaded=false;
 // cross-origin) getInitialData fetch — so Sales Person is never empty
 // even if the network call to the backend fails or is slow. lw() will
 // still refresh this from the server list once it loads successfully.
-const FALLBACK_SALES_PERSONS=['MR. PAWAN NEGI','MR. PRANAV SATIJA','MR. MUKESH SHUKLA','MR. RISHABH JAIN','MR. SONU CHAUHAN','DA DD'];
-const FORM_FILLERS=['MR. PAWAN NEGI','MR. PRANAV SATIJA','MR. MUKESH SHUKLA','MR. RISHABH JAIN','MR. SONU CHAUHAN','MR. INDRESH','MS. POOJA'];
+const FALLBACK_SALES_PERSONS=['Mr. Pawan Negi','Mr. Pranav Satija','Mr. Mukesh Shukla','Mr. Rishabh Jain','Mr. Sonu Chauhan','DA DD'];
+const FORM_FILLERS=['Mr. Pawan Negi','Mr. Pranav Satija','Mr. Mukesh Shukla','Mr. Rishabh Jain','Mr. Sonu Chauhan','Mr. Indresh','Ms. Pooja'];
 function populateFormFillers(list){
   var s=document.getElementById('fillerName');
   if(!s)return;
