@@ -332,6 +332,11 @@ body{font-family:'DM Sans','Segoe UI',sans-serif;background:linear-gradient(170d
   <div class="card-h"><span class="ico">&#128221;</span><span class="ttl">Remarks</span></div>
   <div class="card-b"><div class="fld"><textarea class="txa" id="rmk" placeholder="Enter any additional remarks or notes..."></textarea></div></div>
 </div>
+<!-- TRANSPORTER CHARGE (visible only when Mode of Transport = FOR; not printed on PDF) -->
+<div class="card fi hd" id="trChgC">
+  <div class="card-h"><span class="ico">&#128176;</span><span class="ttl">Transporter Charge</span></div>
+  <div class="card-b"><div class="fld"><label class="lbl">Transporter Charge (&#8377;)</label><input class="inp" id="tTrChg" type="number" min="0" step="0.01" placeholder="0.00"></div></div>
+</div>
 <button type="submit" class="sbm" id="sBtn"><span id="sTxt">Review &amp; Submit</span><div class="sp hd" id="sSpn"></div></button>
 </form>
 <div id="sMsg" class="hd"></div>
@@ -698,6 +703,24 @@ function loadLogo(){
   }catch(e){}
 }
 
+// Shows the "Transporter Charge" card only on the Order tab when transport mode is FOR.
+// `mode` can be passed explicitly (used from st(), because the radio isn't checked yet at that point);
+// otherwise the currently checked radio is used.
+function updateTrChgVisibility(mode){
+  var c=document.getElementById('trChgC');
+  if(!c)return;
+  if(mode===undefined){
+    var r=document.querySelector('input[name="tm"]:checked');
+    mode=r?r.value:'';
+  }
+  var show=(CT==='Order'&&mode==='FOR');
+  c.classList.toggle('hd',!show);
+  if(mode!=='FOR'){
+    var inp=document.getElementById('tTrChg');
+    if(inp)inp.value='';
+  }
+}
+
 function sw(type){
   CT=type;
   var isO=(type==='Order');
@@ -733,6 +756,7 @@ function sw(type){
     if(discWrap && !discWrap.classList.contains('show'))discWrap.classList.add('hd');
     if(discWrap && !isO)discWrap.classList.add('hd');
   });
+  updateTrChgVisibility();
   gfn();
 }
 
@@ -1273,6 +1297,7 @@ function cancelModify(){
   document.getElementById('ic').innerHTML='';
   document.getElementById('gstNo').value='';
   document.getElementById('gstBadgeWrap').style.display='none';
+  updateTrChgVisibility();
   ar();
   var today=new Date().toISOString().split('T')[0];
   document.getElementById('oDate').value=today;
@@ -1332,6 +1357,7 @@ function populateFormForModify(o){
   document.getElementById('tV').value=o.vehicleNumber||'';
   document.getElementById('tD').value=o.driverNumber||'';
   document.getElementById('tFr').value=o.freightAmount||'';
+  document.getElementById('tTrChg').value=o.transporterCharge||'';
   document.getElementById('rmk').value=o.remarks||'';
 
   var ic=document.getElementById('ic');
@@ -1493,6 +1519,7 @@ function st(mode){
   document.getElementById('drF').classList.toggle('hd',mode==='FOR');
   var frF=document.getElementById('frF');
   frF.querySelector('label').innerHTML='Freight / Loading Charge (&#8377;)';
+  updateTrChgVisibility(mode);
 }
 
 function tpd(){
@@ -1763,6 +1790,8 @@ async function sub(e){
     d.vehicleNumber=document.getElementById('tV').value.trim();
     d.driverNumber=document.getElementById('tD').value.trim();
     d.freightAmount=document.getElementById('tFr').value||'0';
+    // Transporter Charge: only for FOR mode; goes to sheet only (NOT printed on PDF)
+    d.transporterCharge=(d.transportMode==='FOR')?(document.getElementById('tTrChg').value||'0'):'0';
   }else{
     var spName2 = document.getElementById('sp2').value;
     d.salesPerson = spName2;
@@ -2508,6 +2537,7 @@ function rst(){
   document.getElementById('dlModal').innerHTML='';
   ar();
   sw(CT);
+  updateTrChgVisibility();
   gfn();
   var today=new Date().toISOString().split('T')[0];
   document.getElementById('oDate').value=today;
